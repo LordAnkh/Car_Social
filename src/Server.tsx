@@ -17,12 +17,25 @@ if (!uri) {
   throw new Error('MONGODB_URI environment variable is not defined');
 }
 
-const client = new MongoClient(uri);
+const client = new MongoClient(uri, {
+  family: 4, // Force IPv4 to avoid some DNS resolution issues
+});
+
+// Connect to MongoDB once at startup
+async function startServer() {
+  try {
+    await client.connect();
+    console.log('Connected to MongoDB');
+    app.listen(5000, () => console.log('Server running on port 5000'));
+  } catch (error) {
+    console.error('Failed to connect to MongoDB:', error);
+  }
+}
+startServer();
 
 // Login endpoint
 app.post('/api/login', async (req, res) => {
   try {
-    await client.connect();
     const db = client.db('Car_Database');
     const users = db.collection('user_credentals');
 
@@ -69,7 +82,6 @@ app.post('/api/login', async (req, res) => {
 // Signup endpoint
 app.post('/api/signup', async (req, res) => {
   try {
-    await client.connect();
     const db = client.db('Car_Database');
     const users = db.collection('user_credentals');
 
@@ -99,5 +111,3 @@ app.post('/api/signup', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
-app.listen(5000, () => console.log('Server running on port 5000'));
