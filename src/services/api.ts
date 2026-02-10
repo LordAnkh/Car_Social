@@ -131,3 +131,59 @@ export const postService = {
     return response.json();
   },
 };
+
+export interface GpsPoint {
+  latitude: number;
+  longitude: number;
+  altitude: number;
+  speed: number;
+  accuracy: number;
+  timestamp: string;
+}
+
+export interface Photo {
+  base64: string;
+  size: number;
+  timestamp: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    altitude: number;
+    accuracy: number;
+  };
+}
+
+export interface GpsDataset {
+  _id: string;
+  gpsPoints: GpsPoint[];
+  photos: Photo[];
+  totalPhotoSize: number;
+  photoCount: number;
+  totalPoints: number;
+  timestamp: string;
+  createdAt: string;
+  userId: string;
+  title: string;
+  description: string;
+}
+
+export interface GetDatasetsResponse {
+  datasets: GpsDataset[];
+}
+
+export const gpsDatasetService = {
+  getAllDatasets: async (): Promise<GetDatasetsResponse> => {
+    const response = await fetch(`${API_BASE}/gps-datasets`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch GPS datasets');
+    }
+
+    return response.json();
+  },
+};

@@ -333,3 +333,93 @@ app.get('/api/locations/:userId', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// Save GPS dataset with photos
+app.post('/api/gps-dataset', authenticateAPIKey, async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const datasets = db.collection('gps_datasets');
+
+    const { gpsPoints, photos, totalPhotoSize, timestamp, totalPoints, photoCount, title, description } = req.body;
+
+    // Validate input
+    if (!gpsPoints || !Array.isArray(gpsPoints) || gpsPoints.length === 0) {
+      return res.status(400).json({ message: 'GPS points array is required' });
+    }
+
+    if (!photos || !Array.isArray(photos) || photos.length === 0) {
+      return res.status(400).json({ message: 'Photos array is required' });
+    }
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ message: 'Title is required' });
+    }
+
+    if (!description || !description.trim()) {
+      return res.status(400).json({ message: 'Description is required' });
+    }
+
+    // Create dataset object
+    const dataset = {
+      gpsPoints,
+      photos,
+      totalPhotoSize: totalPhotoSize || 0,
+      photoCount: photoCount || photos.length,
+      totalPoints: totalPoints || gpsPoints.length,
+      timestamp: new Date(timestamp || new Date()),
+      createdAt: new Date(),
+      userId: 'anonymous', // Can be extended to include user ID
+      title: title.trim(),
+      description: description.trim()
+    };
+
+    const result = await datasets.insertOne(dataset);
+
+    // Also save individual points to locations collection for compatibility
+    const locationDocs = gpsPoints.map(point => ({
+      userId: 'anonymous',
+      latitude: point.latitude,
+      longitude: point.longitude,
+      altitude: point.altitude || 0,
+      speed: point.speed || 0,
+      accuracy: point.accuracy || 0,
+      timestamp: new Date(point.timestamp),
+      createdAt: new Date(),
+      datasetId: result.insertedId
+    }));
+
+    if (locationDocs.length > 0) {
+      await db.collection('locations').insertMany(locationDocs);
+    }
+
+    res.status(201).json({
+      message: 'GPS dataset saved successfully',
+      datasetId: result.insertedId,
+      pointsSaved: gpsPoints.length,
+      photoCount: photos.length,
+      totalPhotoSize: totalPhotoSize
+    });
+  } catch (error) {
+    console.error('Save GPS dataset error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all GPS datasets
+app.get('/api/gps-datasets', async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const datasets = db.collection('gps_datasets');
+
+    // Fetch all datasets, sorted by newest first
+    const allDatasets = await datasets
+      .find({})
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.json({ datasets: allDatasets });
+  } catch (error) {
+    console.error('Fetch GPS datasets error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});

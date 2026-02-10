@@ -219,38 +219,184 @@
   transform: translateY(-2px);
 }
 
-.home-body p {
-  color: #333;
-  font-size: 18px;
-  margin: 0;
+/* GPS Dataset Card Styles */
+.dataset-card {
+  border: 2px solid #667eea;
 }
 
-.bottom-nav {
-  position: fixed;
-  bottom: 20px;
+.dataset-avatar {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  font-size: 20px;
+}
+
+.dataset-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.badge-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Photo Carousel Styles */
+.dataset-carousel {
+  position: relative;
+  width: 100%;
+  max-height: 500px;
+  overflow: hidden;
+  background: #000;
+}
+
+.carousel-image {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.carousel-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  max-height: 500px;
+}
+
+.photo-location-overlay {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  backdrop-filter: blur(5px);
+}
+
+.location-pin {
+  font-size: 14px;
+}
+
+.location-coords {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
+}
+
+.carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.carousel-btn:hover {
+  background: white;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.carousel-btn-prev {
+  left: 10px;
+}
+
+.carousel-btn-next {
+  right: 10px;
+}
+
+.carousel-indicators {
+  position: absolute;
+  bottom: 15px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 15px;
-  background: white;
-  padding: 15px 30px;
-  border-radius: 30px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  gap: 8px;
+  z-index: 2;
 }
 
-.bottom-nav button {
-  padding: 10px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 600;
+.indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
   cursor: pointer;
-  transition: transform 0.2s;
-  min-width: 80px;
+  transition: all 0.2s;
+  border: 1px solid rgba(255, 255, 255, 0.8);
 }
 
-.bottom-nav button:hover {
-  transform: translateY(-2px);
+.indicator:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: scale(1.2);
+}
+
+.indicator.active {
+  background: white;
+  width: 24px;
+  border-radius: 4px;
+}
+
+/* Dataset Content Styles */
+.dataset-description {
+  color: #333;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 10px 0;
+  word-wrap: break-word;
+}
+
+.dataset-photo-info {
+  color: #555;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 10px 0;
+}
+
+.photo-accuracy {
+  color: #999;
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.dataset-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.stat-item {
+  font-size: 13px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
