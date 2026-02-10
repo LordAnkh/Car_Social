@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from './AuthContext.tsx';
+import { useAuth } from '../../context/AuthContext.tsx';
+import { postService } from '../../services/api.ts';
+import BottomNav from '../../components/BottomNav/index.tsx';
+import './CreatePost.css';
 
 const CreatePost: React.FC = () => {
   const [description, setDescription] = useState('');
@@ -17,18 +20,7 @@ const CreatePost: React.FC = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/posts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ description, image: imageUrl }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create post');
-      }
+      await postService.createPost(token, description, imageUrl);
 
       navigate('/home');
     } catch (err: any) {
@@ -37,37 +29,37 @@ const CreatePost: React.FC = () => {
   };
 
   return (
-    <div className="create-post-container" style={{ padding: '20px', maxWidth: '500px', margin: '0 auto' }}>
+    <div className="create-post-container">
       <h2>Create New Post</h2>
-      {error && <div style={{ color: 'red', marginBottom: '10px' }}>{error}</div>}
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+      {error && <div className="error-message">{error}</div>}
+      <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label style={{ display: 'block', marginBottom: '5px' }}>Description</label>
+          <label>Description</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="What's on your mind?"
-            style={{ width: '100%', padding: '8px', minHeight: '100px' }}
             required
           />
         </div>
 
         <div className="form-group">
-          <label style={{ display: 'block', marginBottom: '5px' }}>Image URL</label>
+          <label>Image URL</label>
           <input
             type="text"
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
             placeholder="https://example.com/car.jpg"
-            style={{ width: '100%', padding: '8px' }}
             required
           />
         </div>
 
-        <button type="submit" style={{ padding: '10px', backgroundColor: '#007bff', color: 'white', border: 'none', cursor: 'pointer' }}>
+        <button type="submit">
           Post
         </button>
       </form>
+
+      <BottomNav />
     </div>
   );
 };

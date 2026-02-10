@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { authService } from '../../services/api.ts';
+import './Signup.css';
 
 
 const Signup: React.FC = () => {
@@ -37,17 +39,8 @@ const Signup: React.FC = () => {
 
     // Handle signup logic here
     try {
-      const response = await fetch('http://localhost:5000/api/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+      await authService.signup(email, password);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Signup failed');
-      }
       setSuccess('Account created successfully! You can now log in.');
       setEmail('');
       setPassword('');

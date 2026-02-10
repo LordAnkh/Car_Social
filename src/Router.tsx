@@ -1,10 +1,10 @@
 import React from "react";
-import {Routes,Route} from 'react-router-dom';
-import Homepage from "./Home.tsx";
-import Login   from "./Login.tsx";
-import Signup from "./Signup.tsx";
-import CreatePost from "./postcreate.tsx";
-import { AuthProvider } from "./AuthContext.tsx";
+import { Routes, Route } from 'react-router-dom';
+import Homepage from "./pages/Home/index.tsx";
+import Login from "./pages/Login/index.tsx";
+import Signup from "./pages/Signup/index.tsx";
+import CreatePost from "./pages/CreatePost/index.tsx";
+import { AuthProvider } from "./context/AuthContext.tsx";
 //import InformationCenter from "./Tracker.js";
 //import Financial from "./Financial.js";
 

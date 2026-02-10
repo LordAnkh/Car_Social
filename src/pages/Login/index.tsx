@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from './AuthContext.tsx';
+import { useAuth } from '../../context/AuthContext.tsx';
+import { authService } from '../../services/api.ts';
 import './Login.css';
 
 const Login: React.FC = () => {
@@ -27,17 +28,7 @@ const Login: React.FC = () => {
 
     // Handle login logic here
     try {
-      const response = await fetch('http://localhost:5000/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
-      }
+      const data = await authService.login(email, password);
 
       // Store token and user data in global context and localStorage
       login(data.token, data.user);

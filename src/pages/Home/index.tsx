@@ -1,8 +1,8 @@
 import React from 'react';
-import './homepage.css';
-import { useAuth } from './AuthContext.tsx';
-import { useNavigate } from 'react-router-dom';
-import { NavLink } from 'react-router-dom';
+import './Home.css';
+import { useAuth } from '../../context/AuthContext.tsx';
+import BottomNav from '../../components/BottomNav/index.tsx';
+
 export default function Homepage() {
   const { user, logout } = useAuth();
 
@@ -17,11 +17,7 @@ export default function Homepage() {
         <p>Car Social Media</p>
       </div>
 
-<nav className="bottom-nav">
-  <NavLink to="/home">Home</NavLink>
-  <NavLink to="/create-trip">Post</NavLink>
-  <NavLink to="/profile">Profile</NavLink>
-</nav>
-</div>
+      <BottomNav />
+    </div>
   );
 }
