@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LocTrack">
+<meta name="theme-color" content="#0a0a0f">
+<title>Location Tracker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230a0a0f' width='100' height='100' rx='20'/><circle cx='50' cy='45' r='18' fill='none' stroke='%2300e4a0' stroke-width='3'/><circle cx='50' cy='45' r='5' fill='%2300e4a0'/><path d='M50 63 L50 78' stroke='%2300e4a0' stroke-width='3' stroke-linecap='round'/></svg>">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface-2: #1a1a26;
+    --border: #2a2a3a;
+    --text: #e8e8f0;
+    --text-dim: #6a6a80;
+    --accent: #00e4a0;
+    --accent-dim: rgba(0, 228, 160, 0.12);
+    --red: #ff4060;
+    --red-dim: rgba(255, 64, 96, 0.12);
+    --orange: #ff9040;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  .app {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 20px;
+    position: relative;
+  }
+
+  /* Ambient glow behind the status indicator */
+  .ambient-glow {
+    position: fixed;
+    top: -120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-dim) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .ambient-glow.active { opacity: 1; }
+
+  /* Header */
+  .header {
+    padding: 60px 0 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+  }
+  .header h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+  .header .status-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.4s ease;
+  }
+  .status-pill.idle {
+    background: var(--surface-2);
+    color: var(--text-dim);
+  }
+  .status-pill.tracking {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+  .status-pill .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .status-pill.tracking .dot {
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  /* Main content area */
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 120px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Coordinate display */
+  .coords-section {
+    margin-top: 28px;
+  }
+  .coords-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+  .coords-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .coord-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    transition: border-color 0.4s ease;
+  }
+  .coord-card.active { border-color: rgba(0, 228, 160, 0.25); }
+  .coord-card .label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .coord-card .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--text);
+    transition: color 0.4s ease;
+  }
+  .coord-card.active .value { color: var(--accent); }
+  .coord-card .unit {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-left: 2px;
+  }
+
+  /* Stats row */
+  .stats-section {
+    margin-top: 20px;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-card .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 600;
+  }
+  .stat-card .label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* Log section */
+  .log-section {
+    margin-top: 20px;
+  }
+  .log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .log-item {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    animation: fadeIn 0.3s ease;
+  }
+  .log-item .coords { color: var(--text); }
+  .log-item .time { color: var(--text-dim); }
+  .log-item.error { color: var(--red); background: var(--red-dim); }
+  .log-item.success .status-dot {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Settings panel */
+  .settings-section {
+    margin-top: 20px;
+    padding-bottom: 20px;
+  }
+  .setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 8px;
+  }
+  .setting-row .label { font-size: 13px; font-weight: 500; }
+  .setting-row .sublabel { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .setting-row input, .setting-row select {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    width: 140px;
+    text-align: right;
+  }
+  .setting-row input:focus, .setting-row select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  /* Bottom action button */
+  .action-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px 20px calc(env(safe-area-inset-bottom, 16px) + 16px);
+    background: linear-gradient(to top, var(--bg) 60%, transparent);
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+  }
+  .track-btn {
+    width: 100%;
+    max-width: 440px;
+    padding: 18px;
+    border: none;
+    border-radius: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .track-btn.start {
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .track-btn.start:active { transform: scale(0.97); }
+  .track-btn.stop {
+    background: var(--red-dim);
+    color: var(--red);
+    border: 1px solid rgba(255, 64, 96, 0.3);
+  }
+  .track-btn.stop:active { transform: scale(0.97); }
+
+  /* Message bar */
+  .message-bar {
+    position: fixed;
+    top: 50px;
+    left: 20px;
+    right: 20px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-align: center;
+    z-index: 20;
+    transform: translateY(-120%);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    max-width: 440px;
+    margin: 0 auto;
+  }
+  .message-bar.visible { transform: translateY(0); }
+  .message-bar.info { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(0,228,160,0.2); }
+  .message-bar.error { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,64,96,0.2); }
+
+  /* Scrollbar */
+  .content::-webkit-scrollbar { width: 4px; }
+  .content::-webkit-scrollbar-track { background: transparent; }
+  .content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div class="ambient-glow" id="glow"></div>
+<div class="message-bar" id="messageBar"></div>
+
+<div class="app">
+  <div class="header">
+    <h1>⌖ LocTrack</h1>
+    <div class="status-pill idle" id="statusPill">
+      <span class="dot"></span>
+      <span id="statusText">IDLE</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Coordinates -->
+    <div class="coords-section">
+      <div class="coords-label">Current Position</div>
+      <div class="coords-grid">
+        <div class="coord-card" id="latCard">
+          <div class="label">Latitude</div>
+          <div class="value" id="latValue">—</div>
+        </div>
+        <div class="coord-card" id="lngCard">
+          <div class="label">Longitude</div>
+          <div class="value" id="lngValue">—</div>
+        </div>
+        <div class="coord-card" id="speedCard">
+          <div class="label">Speed</div>
+          <div class="value"><span id="speedValue">—</span><span class="unit"> m/s</span></div>
+        </div>
+        <div class="coord-card" id="altCard">
+          <div class="label">Altitude</div>
+          <div class="value"><span id="altValue">—</span><span class="unit"> m</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-section">
+      <div class="coords-label">Session</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="value" id="pointCount">0</div>
+          <div class="label">Points</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="sentCount">0</div>
+          <div class="label">Sent</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="bufferedCount">0</div>
+          <div class="label">Buffered</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="log-section">
+      <div class="log-header">
+        <div class="coords-label" style="margin:0">Activity Log</div>
+      </div>
+      <div class="log-list" id="logList">
+        <div class="log-item" style="color: var(--text-dim); justify-content: center;">No activity yet</div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="settings-section">
+      <div class="coords-label">Settings</div>
+
+      <div class="setting-row">
+        <div>
+          <div class="label">Server URL</div>
+          <div class="sublabel">Your backend API endpoint</div>
+        </div>
+      </div>
+      <div class="setting-row" style="padding: 8px 16px;">
+        <input type="url" id="serverUrl" placeholder="http://192.168.1.100:3000" style="width: 100%; text-align: left;" value="">
+      </div>
+
+      <div class="setting-row">
+        <div>
+          <div class="label">API Key</div>
+          <div class="sublabel">Must match your server</div>
+        </div>
+        <input type="text" id="apiKey" placeholder="your-secret-key" value="">
+      </div>
+
+      <div class="setting-row">
+        <div>
+          <div class="label">Update Interval</div>
+          <div class="sublabel">Seconds between GPS reads</div>
+        </div>
+        <select id="interval">
+          <option value="5">5 sec</option>
+          <option value="10" selected>10 sec</option>
+          <option value="30">30 sec</option>
+          <option value="60">60 sec</option>
+        </select>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="action-bar">
+    <button class="track-btn start" id="trackBtn" onclick="toggleTracking()">START TRACKING</button>
+  </div>
+</div>
+
+<script>
+  // ============================================
+  // State
+  // ============================================
+  let isTracking = false;
+  let watchId = null;
+  let pointsLogged = 0;
+  let pointsSent = 0;
+  let offlineBuffer = [];
+  let logEntries = [];
+
+  // Load saved settings
+  const savedUrl = localStorage.getItem('serverUrl') || '';
+  const savedKey = localStorage.getItem('apiKey') || '';
+  document.getElementById('serverUrl').value = savedUrl;
+  document.getElementById('apiKey').value = savedKey;
+
+  // Save settings on change
+  document.getElementById('serverUrl').addEventListener('change', (e) => {
+    localStorage.setItem('serverUrl', e.target.value);
+  });
+  document.getElementById('apiKey').addEventListener('change', (e) => {
+    localStorage.setItem('apiKey', e.target.value);
+  });
+
+  // Load offline buffer from localStorage
+  try {
+    const saved = localStorage.getItem('offlineBuffer');
+    if (saved) offlineBuffer = JSON.parse(saved);
+  } catch(e) {}
+
+  // ============================================
+  // UI Updates
+  // ============================================
+  function updateUI(coords) {
+    document.getElementById('latValue').textContent = coords.latitude.toFixed(6);
+    document.getElementById('lngValue').textContent = coords.longitude.toFixed(6);
+    document.getElementById('speedValue').textContent = Math.max(coords.speed || 0, 0).toFixed(1);
+    document.getElementById('altValue').textContent = (coords.altitude || 0).toFixed(1);
+
+    document.getElementById('pointCount').textContent = pointsLogged;
+    document.getElementById('sentCount').textContent = pointsSent;
+    document.getElementById('bufferedCount').textContent = offlineBuffer.length;
+
+    // Activate card borders
+    document.querySelectorAll('.coord-card').forEach(c => c.classList.toggle('active', isTracking));
+  }
+
+  function setStatus(tracking) {
+    const pill = document.getElementById('statusPill');
+    const text = document.getElementById('statusText');
+    const glow = document.getElementById('glow');
+    const btn = document.getElementById('trackBtn');
+
+    if (tracking) {
+      pill.className = 'status-pill tracking';
+      text.textContent = 'TRACKING';
+      glow.classList.add('active');
+      btn.className = 'track-btn stop';
+      btn.textContent = 'STOP TRACKING';
+    } else {
+      pill.className = 'status-pill idle';
+      text.textContent = 'IDLE';
+      glow.classList.remove('active');
+      btn.className = 'track-btn start';
+      btn.textContent = 'START TRACKING';
+      document.querySelectorAll('.coord-card').forEach(c => c.classList.remove('active'));
+    }
+  }
+
+  function addLog(message, type = 'info') {
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    logEntries.unshift({ message, type, time });
+    if (logEntries.length > 50) logEntries.pop();
+
+    const list = document.getElementById('logList');
+    list.innerHTML = logEntries.map(entry => {
+      if (entry.type === 'error') {
+        return `<div class="log-item error"><span>${entry.message}</span><span class="time">${entry.time}</span></div>`;
+      }
+      return `<div class="log-item success"><span class="coords"><span class="status-dot"></span>${entry.message}</span><span class="time">${entry.time}</span></div>`;
+    }).join('');
+  }
+
+  function showMessage(text, type = 'info') {
+    const bar = document.getElementById('messageBar');
+    bar.textContent = text;
+    bar.className = `message-bar ${type} visible`;
+    setTimeout(() => bar.classList.remove('visible'), 3000);
+  }
+
+  // ============================================
+  // GPS & Network
+  // ============================================
+  function toggleTracking() {
+    if (isTracking) {
+      stopTracking();
+    } else {
+      startTracking();
+    }
+  }
+
+  function startTracking() {
+    if (!navigator.geolocation) {
+      showMessage('Geolocation not supported', 'error');
+      return;
+    }
+
+    const serverUrl = document.getElementById('serverUrl').value.trim();
+    if (!serverUrl) {
+      showMessage('Set your server URL first', 'error');
+      return;
+    }
+
+    isTracking = true;
+    setStatus(true);
+    showMessage('Tracking started');
+    addLog('Tracking started');
+
+    // Use watchPosition for continuous updates
+    watchId = navigator.geolocation.watchPosition(
+      onPosition,
+      onError,
+      {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 15000
+      }
+    );
+  }
+
+  function stopTracking() {
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    }
+    isTracking = false;
+    setStatus(false);
+    showMessage('Tracking stopped');
+    addLog('Tracking stopped');
+  }
+
+  let lastSendTime = 0;
+
+  function onPosition(position) {
+    const coords = position.coords;
+    updateUI(coords);
+
+    // Throttle sends based on interval setting
+    const interval = parseInt(document.getElementById('interval').value) * 1000;
+    const now = Date.now();
+    if (now - lastSendTime < interval) return;
+    lastSendTime = now;
+
+    pointsLogged++;
+
+    const data = {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      altitude: coords.altitude || 0,
+      speed: Math.max(coords.speed || 0, 0),
+      accuracy: coords.accuracy || 0,
+      timestamp: new Date().toISOString()
+    };
+
+    sendToServer(data);
+  }
+
+  function onError(error) {
+    const messages = {
+      1: 'Location permission denied — enable in browser settings',
+      2: 'Position unavailable',
+      3: 'Location request timed out'
+    };
+    const msg = messages[error.code] || error.message;
+    showMessage(msg, 'error');
+    addLog(msg, 'error');
+  }
+
+  async function sendToServer(data) {
+    const serverUrl = document.getElementById('serverUrl').value.trim();
+    const apiKey = document.getElementById('apiKey').value.trim();
+
+    try {
+      const response = await fetch(`${serverUrl}/api/location`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        pointsSent++;
+        addLog(`${data.latitude.toFixed(4)}, ${data.longitude.toFixed(4)}`);
+        document.getElementById('sentCount').textContent = pointsSent;
+        // Try flushing offline buffer
+        flushBuffer();
+      } else {
+        throw new Error(`Server returned ${response.status}`);
+      }
+    } catch (err) {
+      // Buffer offline
+      offlineBuffer.push(data);
+      localStorage.setItem('offlineBuffer', JSON.stringify(offlineBuffer));
+      document.getElementById('bufferedCount').textContent = offlineBuffer.length;
+      addLog(`Buffered (offline): ${data.latitude.toFixed(4)}, ${data.longitude.toFixed(4)}`, 'error');
+    }
+  }
+
+  async function flushBuffer() {
+    if (offlineBuffer.length === 0) return;
+
+    const serverUrl = document.getElementById('serverUrl').value.trim();
+    const apiKey = document.getElementById('apiKey').value.trim();
+    const toSend = [...offlineBuffer];
+
+    try {
+      const response = await fetch(`${serverUrl}/api/locations/batch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey
+        },
+        body: JSON.stringify({ locations: toSend })
+      });
+
+      if (response.ok) {
+        pointsSent += toSend.length;
+        offlineBuffer = [];
+        localStorage.removeItem('offlineBuffer');
+        document.getElementById('sentCount').textContent = pointsSent;
+        document.getElementById('bufferedCount').textContent = 0;
+        addLog(`Flushed ${toSend.length} buffered points`);
+      }
+    } catch (err) {
+      // Still offline, keep buffer
+    }
+  }
+
+  // ============================================
+  // Keep screen awake (when supported)
+  // ============================================
+  let wakeLock = null;
+  async function requestWakeLock() {
+    if ('wakeLock' in navigator) {
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+          if (isTracking) requestWakeLock(); // Re-acquire if still tracking
+        });
+      } catch (err) {
+        // Wake lock not available
+      }
+    }
+  }
+
+  // Request wake lock when tracking starts
+  const originalStart = startTracking;
+  startTracking = function() {
+    originalStart();
+    requestWakeLock();
+  };
+  const originalStop = stopTracking;
+  stopTracking = function() {
+    originalStop();
+    if (wakeLock) { wakeLock.release(); wakeLock = null; }
+  };
+
+  // Update buffered count on load
+  document.getElementById('bufferedCount').textContent = offlineBuffer.length;
+</script>
+
+</body>
+</html>
