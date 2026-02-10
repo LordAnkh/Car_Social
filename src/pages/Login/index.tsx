@@ -42,7 +42,7 @@ const Login: React.FC = () => {
   return (
     <div className="login-container">
       <div className="login-card">
-        <h1>Car Social Media</h1>
+        <h1>Road Tripper</h1>
         <h2>Login</h2>
         
         <form onSubmit={handleSubmit}>
@@ -70,7 +70,7 @@ const Login: React.FC = () => {
 
           {error && <div className="error-message">{error}</div>}
 
-          <button type="submit">Submit</button>
+          <button type="submit" className="login-button">Submit</button>
         </form>
 
         <div className="login-footer">
