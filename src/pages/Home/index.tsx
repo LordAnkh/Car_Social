@@ -1,13 +1,81 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import L from 'leaflet';
 import './Home.css';
 import { useAuth } from '../../context/AuthContext.tsx';
 import BottomNav from '../../components/BottomNav/index.tsx';
-import { postService, Post, gpsDatasetService, GpsDataset } from '../../services/api.ts';
+import { postService, Post, gpsDatasetService, GpsDataset, GpsPoint } from '../../services/api.ts';
 
 type FeedItem =
   | { type: 'post'; data: Post }
   | { type: 'dataset'; data: GpsDataset };
+
+function DatasetMap({ gpsPoints, datasetId }: { gpsPoints: GpsPoint[]; datasetId: string }) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstance = useRef<L.Map | null>(null);
+
+  useEffect(() => {
+    if (!mapRef.current || gpsPoints.length === 0) return;
+
+    // Clean up previous map instance
+    if (mapInstance.current) {
+      mapInstance.current.remove();
+      mapInstance.current = null;
+    }
+
+    const map = L.map(mapRef.current, {
+      zoomControl: true,
+      attributionControl: false,
+    });
+    mapInstance.current = map;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(map);
+
+    const coords: L.LatLngExpression[] = gpsPoints.map(p => [p.latitude, p.longitude]);
+
+    // Draw the route polyline
+    const polyline = L.polyline(coords, {
+      color: '#667eea',
+      weight: 4,
+      opacity: 0.8,
+    }).addTo(map);
+
+    // Add start and end markers
+    if (coords.length > 0) {
+      L.circleMarker(coords[0], {
+        radius: 8,
+        fillColor: '#4CAF50',
+        color: '#fff',
+        weight: 2,
+        fillOpacity: 1,
+      }).addTo(map).bindPopup('Start');
+
+      if (coords.length > 1) {
+        L.circleMarker(coords[coords.length - 1], {
+          radius: 8,
+          fillColor: '#ff4060',
+          color: '#fff',
+          weight: 2,
+          fillOpacity: 1,
+        }).addTo(map).bindPopup('End');
+      }
+    }
+
+    // Fit map to route bounds
+    map.fitBounds(polyline.getBounds(), { padding: [30, 30] });
+
+    return () => {
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+      }
+    };
+  }, [gpsPoints, datasetId]);
+
+  return <div ref={mapRef} className="dataset-map" />;
+}
 
 export default function Homepage() {
   const { user, logout } = useAuth();
@@ -72,17 +140,17 @@ export default function Homepage() {
     return date.toLocaleDateString();
   };
 
-  const handleNextPhoto = (datasetId: string, totalPhotos: number) => {
+  const handleNextSlide = (datasetId: string, totalSlides: number) => {
     setCurrentPhotoIndex(prev => ({
       ...prev,
-      [datasetId]: ((prev[datasetId] || 0) + 1) % totalPhotos,
+      [datasetId]: ((prev[datasetId] || 0) + 1) % totalSlides,
     }));
   };
 
-  const handlePrevPhoto = (datasetId: string, totalPhotos: number) => {
+  const handlePrevSlide = (datasetId: string, totalSlides: number) => {
     setCurrentPhotoIndex(prev => ({
       ...prev,
-      [datasetId]: ((prev[datasetId] || 0) - 1 + totalPhotos) % totalPhotos,
+      [datasetId]: ((prev[datasetId] || 0) - 1 + totalSlides) % totalSlides,
     }));
   };
 
@@ -115,8 +183,10 @@ export default function Homepage() {
   );
 
   const renderDataset = (dataset: GpsDataset) => {
-    const photoIndex = currentPhotoIndex[dataset._id] || 0;
-    const currentPhoto = dataset.photos[photoIndex];
+    const slideIndex = currentPhotoIndex[dataset._id] || 0;
+    const totalSlides = dataset.photos.length + 1; // +1 for map slide
+    const isMapSlide = slideIndex === 0;
+    const currentPhoto = isMapSlide ? null : dataset.photos[slideIndex - 1];
 
     return (
       <div key={dataset._id} className="post-card dataset-card">
@@ -141,60 +211,70 @@ export default function Homepage() {
         </div>
 
         <div className="dataset-carousel">
-          <div className="carousel-image">
-            <img src={currentPhoto.base64} alt={`Photo ${photoIndex + 1}`} />
-            {currentPhoto.location && (
-              <div className="photo-location-overlay">
-                <span className="location-pin">📍</span>
-                <span className="location-coords">
-                  {currentPhoto.location.latitude.toFixed(6)}, {currentPhoto.location.longitude.toFixed(6)}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {dataset.photos.length > 1 && (
-            <>
-              <button
-                className="carousel-btn carousel-btn-prev"
-                onClick={() => handlePrevPhoto(dataset._id, dataset.photos.length)}
-                aria-label="Previous photo"
-              >
-                ‹
-              </button>
-              <button
-                className="carousel-btn carousel-btn-next"
-                onClick={() => handleNextPhoto(dataset._id, dataset.photos.length)}
-                aria-label="Next photo"
-              >
-                ›
-              </button>
-              <div className="carousel-indicators">
-                {dataset.photos.map((_, idx) => (
-                  <span
-                    key={idx}
-                    className={`indicator ${idx === photoIndex ? 'active' : ''}`}
-                    onClick={() => setCurrentPhotoIndex(prev => ({ ...prev, [dataset._id]: idx }))}
-                  />
-                ))}
-              </div>
-            </>
+          {isMapSlide ? (
+            <DatasetMap gpsPoints={dataset.gpsPoints} datasetId={dataset._id} />
+          ) : (
+            <div className="carousel-image">
+              <img src={currentPhoto!.base64} alt={`Photo ${slideIndex}`} />
+              {currentPhoto!.location && (
+                <div className="photo-location-overlay">
+                  <span className="location-pin">📍</span>
+                  <span className="location-coords">
+                    {currentPhoto!.location.latitude.toFixed(6)}, {currentPhoto!.location.longitude.toFixed(6)}
+                  </span>
+                </div>
+              )}
+            </div>
           )}
+
+          <button
+            className="carousel-btn carousel-btn-prev"
+            onClick={() => handlePrevSlide(dataset._id, totalSlides)}
+            aria-label="Previous slide"
+          >
+            ‹
+          </button>
+          <button
+            className="carousel-btn carousel-btn-next"
+            onClick={() => handleNextSlide(dataset._id, totalSlides)}
+            aria-label="Next slide"
+          >
+            ›
+          </button>
+          <div className="carousel-indicators">
+            {Array.from({ length: totalSlides }).map((_, idx) => (
+              <span
+                key={idx}
+                className={`indicator ${idx === slideIndex ? 'active' : ''} ${idx === 0 ? 'map-indicator' : ''}`}
+                onClick={() => setCurrentPhotoIndex(prev => ({ ...prev, [dataset._id]: idx }))}
+                title={idx === 0 ? 'Route Map' : `Photo ${idx}`}
+              />
+            ))}
+          </div>
         </div>
 
         <div className="post-content">
           <p className="post-description">{dataset.description}</p>
-          <p className="dataset-photo-info">
-            📸 Photo {photoIndex + 1} of {dataset.photos.length}
-            {currentPhoto.location && (
-              <span className="photo-accuracy">
-                {' '}• Accuracy: ±{currentPhoto.location.accuracy.toFixed(0)}m
-              </span>
-            )}
-          </p>
+          {isMapSlide ? (
+            <p className="dataset-photo-info">
+              🗺️ Route Map • {dataset.totalPoints} GPS points tracked
+            </p>
+          ) : (
+            <p className="dataset-photo-info">
+              📸 Photo {slideIndex} of {dataset.photos.length}
+              {currentPhoto!.location && (
+                <span className="photo-accuracy">
+                  {' '}• Accuracy: ±{currentPhoto!.location.accuracy.toFixed(0)}m
+                </span>
+              )}
+            </p>
+          )}
           <div className="dataset-stats">
             <span className="stat-item">
-              🕒 {new Date(currentPhoto.timestamp).toLocaleString()}
+              🕒 {isMapSlide
+                ? new Date(dataset.createdAt).toLocaleString()
+                : new Date(currentPhoto!.timestamp).toLocaleString()
+              }
             </span>
           </div>
         </div>
