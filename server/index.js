@@ -411,10 +411,14 @@ app.get('/api/gps-datasets', async (req, res) => {
     const db = client.db('Car_Database');
     const datasets = db.collection('gps_datasets');
 
+    // Create index for efficient sorting (no-op if already exists)
+    await datasets.createIndex({ createdAt: -1 }).catch(() => {});
+
     // Fetch all datasets, sorted by newest first
     const allDatasets = await datasets
       .find({})
       .sort({ createdAt: -1 })
+      .allowDiskUse()
       .toArray();
 
     res.json({ datasets: allDatasets });
