@@ -940,6 +940,44 @@
   // ============================================
   // Camera Functions
   // ============================================
+  function findClosestGpsPoint(captureTimestamp) {
+    // Use currentPosition as primary source (most up-to-date)
+    if (currentPosition) {
+      return {
+        latitude: currentPosition.latitude,
+        longitude: currentPosition.longitude,
+        altitude: currentPosition.altitude,
+        speed: currentPosition.speed,
+        accuracy: currentPosition.accuracy,
+        timestamp: currentPosition.timestamp
+      };
+    }
+
+    // Fallback: find nearest GPS point from array by timestamp
+    if (gpsPointsArray.length === 0) return null;
+
+    const captureMs = new Date(captureTimestamp).getTime();
+    let closest = gpsPointsArray[0];
+    let minDiff = Math.abs(new Date(closest.timestamp).getTime() - captureMs);
+
+    for (let i = 1; i < gpsPointsArray.length; i++) {
+      const diff = Math.abs(new Date(gpsPointsArray[i].timestamp).getTime() - captureMs);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = gpsPointsArray[i];
+      }
+    }
+
+    return {
+      latitude: closest.latitude,
+      longitude: closest.longitude,
+      altitude: closest.altitude,
+      speed: closest.speed,
+      accuracy: closest.accuracy,
+      timestamp: closest.timestamp
+    };
+  }
+
   function openCamera() {
     if (!isTracking) {
       showMessage('Start tracking first to capture photos', 'error');
@@ -956,20 +994,16 @@
       // Compress image to JPG under 5MB
       const compressed = await compressImage(file, 5 * 1024 * 1024);
 
-      // Get current GPS position at photo capture time
-      const photoLocation = currentPosition ? {
-        latitude: currentPosition.latitude,
-        longitude: currentPosition.longitude,
-        altitude: currentPosition.altitude,
-        accuracy: currentPosition.accuracy
-      } : null;
+      // Find the closest GPS point by timestamp
+      const captureTime = new Date().toISOString();
+      const closestGpsPoint = findClosestGpsPoint(captureTime);
 
-      // Add to photos array with GPS coordinates
+      // Add to photos array with full GPS point data
       capturedPhotos.push({
         base64: compressed.base64,
         size: compressed.size,
-        timestamp: new Date().toISOString(),
-        location: photoLocation
+        timestamp: captureTime,
+        location: closestGpsPoint
       });
       totalPhotoSize += compressed.size;
 
@@ -979,7 +1013,7 @@
       // Update photo count
       document.getElementById('photoCount').textContent = `${capturedPhotos.length} photo${capturedPhotos.length !== 1 ? 's' : ''} captured (${(totalPhotoSize / 1024).toFixed(0)} KB total)`;
 
-      const locationStr = photoLocation ? ` at ${photoLocation.latitude.toFixed(4)}, ${photoLocation.longitude.toFixed(4)}` : '';
+      const locationStr = closestGpsPoint ? ` at ${closestGpsPoint.latitude.toFixed(4)}, ${closestGpsPoint.longitude.toFixed(4)} | ${(closestGpsPoint.speed * 3.6).toFixed(1)} km/h` : '';
       showMessage(`Photo ${capturedPhotos.length} captured!${locationStr}`, 'info');
       addLog(`📷 Captured photo ${capturedPhotos.length} (${(compressed.size / 1024).toFixed(0)}KB)${locationStr}`);
 
@@ -1016,8 +1050,14 @@
 
     if (photo.location) {
       infoText += ` | 📍 ${photo.location.latitude.toFixed(6)}, ${photo.location.longitude.toFixed(6)}`;
+      if (photo.location.altitude) {
+        infoText += ` | Alt: ${photo.location.altitude.toFixed(1)}m`;
+      }
+      if (photo.location.speed !== undefined) {
+        infoText += ` | Speed: ${(photo.location.speed * 3.6).toFixed(1)} km/h`;
+      }
       if (photo.location.accuracy) {
-        infoText += ` (±${photo.location.accuracy.toFixed(0)}m)`;
+        infoText += ` | ±${photo.location.accuracy.toFixed(0)}m`;
       }
     } else {
       infoText += ` | No GPS data`;
