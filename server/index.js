@@ -9,6 +9,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const app = express();
 app.use(express.json({ limit: '10mb' })); // Increase limit for base64 images
 app.use(express.static(path.join(__dirname, '../public'))); // Serve static files from public folder
+app.use(express.static(path.join(__dirname, '../build'))); // Serve React build
 app.use(cors());
 
 // MongoDB connection
@@ -426,4 +427,9 @@ app.get('/api/gps-datasets', async (req, res) => {
     console.error('Fetch GPS datasets error:', error);
     res.status(500).json({ message: 'Server error' });
   }
+});
+
+// Catch-all: serve React app for any non-API, non-static routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../build', 'index.html'));
 });

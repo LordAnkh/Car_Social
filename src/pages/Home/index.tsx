@@ -215,7 +215,7 @@ export default function Homepage() {
             <DatasetMap gpsPoints={dataset.gpsPoints} datasetId={dataset._id} />
           ) : (
             <div className="carousel-image">
-              <img src={currentPhoto!.base64} alt={`Photo ${slideIndex}`} />
+              <img src={currentPhoto!.base64} alt={`Slide ${slideIndex}`} />
               {currentPhoto!.location && (
                 <div className="photo-location-overlay">
                   <span className="location-pin">📍</span>
