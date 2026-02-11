@@ -566,6 +566,9 @@
           <button id="captureBtn" onclick="openCamera()" disabled style="background: var(--accent); color: var(--bg); border: none; padding: 12px 24px; border-radius: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 600; cursor: pointer; font-size: 14px; opacity: 0.5;">
             📷 CAPTURE PHOTO
           </button>
+          <button id="publishBtn" onclick="openPublishModal()" style="display: none; background: var(--surface); color: var(--accent); border: 1px solid var(--accent); padding: 12px 24px; border-radius: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 600; cursor: pointer; font-size: 14px;">
+            📝 PUBLISH
+          </button>
         </div>
         <div id="cameraStatus" style="margin-top: -5px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); font-style: italic;">
           Start tracking to enable camera
@@ -645,6 +648,7 @@
 
   <div class="action-bar">
     <button class="track-btn start" id="trackBtn" onclick="toggleTracking()">START TRACKING</button>
+    <button id="cancelTripBtn" onclick="cancelTrip()" style="display: none; width: 100%; max-width: 440px; margin-top: 8px; padding: 14px; border: 1px solid rgba(255, 64, 96, 0.3); border-radius: 12px; background: var(--red-dim); color: var(--red); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;">CANCEL TRIP</button>
   </div>
 </div>
 
@@ -860,6 +864,7 @@
 
     // Add to GPS points array instead of sending immediately
     gpsPointsArray.push({...currentPosition});
+    updateCancelTripBtn();
     addLog(`Point ${pointsLogged}: ${currentPosition.latitude.toFixed(4)}, ${currentPosition.longitude.toFixed(4)}`);
     document.getElementById('pointCount').textContent = gpsPointsArray.length;
   }
@@ -1006,6 +1011,7 @@
         location: closestGpsPoint
       });
       totalPhotoSize += compressed.size;
+      updateCancelTripBtn();
 
       // Update gallery
       updatePhotoGallery();
@@ -1083,17 +1089,57 @@
 
   // Post details modal functions
   function cancelPostDetails() {
-    if (confirm('Discard this post? All GPS data and photos will be lost.')) {
-      document.getElementById('postDetailsModal').classList.remove('visible');
+    // Just close the modal and go back to tracker - keep all data
+    document.getElementById('postDetailsModal').classList.remove('visible');
+    // Show publish button so user can reopen the modal later
+    document.getElementById('publishBtn').style.display = 'inline-block';
+    addLog('Post postponed - data preserved');
+    showMessage('Data saved - tap PUBLISH when ready', 'info');
+  }
+
+  function cancelTrip() {
+    if (confirm('Cancel this trip? All GPS data and photos will be deleted.')) {
+      // Stop tracking if active
+      if (isTracking) {
+        if (watchId !== null) {
+          navigator.geolocation.clearWatch(watchId);
+          watchId = null;
+        }
+        isTracking = false;
+        setStatus(false);
+      }
       // Clear all data
       gpsPointsArray = [];
       capturedPhotos = [];
       totalPhotoSize = 0;
+      pointsLogged = 0;
       updatePhotoGallery();
       document.getElementById('pointCount').textContent = 0;
       document.getElementById('photoCount').textContent = '0 photos captured';
-      addLog('Session discarded by user');
+      document.getElementById('publishBtn').style.display = 'none';
+      document.getElementById('cancelTripBtn').style.display = 'none';
+      document.getElementById('postDetailsModal').classList.remove('visible');
+      showMessage('Trip cancelled - all data cleared', 'info');
+      addLog('Trip cancelled by user');
     }
+  }
+
+  function updateCancelTripBtn() {
+    const btn = document.getElementById('cancelTripBtn');
+    if (gpsPointsArray.length > 0 || capturedPhotos.length > 0) {
+      btn.style.display = 'block';
+    } else {
+      btn.style.display = 'none';
+    }
+  }
+
+  function openPublishModal() {
+    if (gpsPointsArray.length === 0 || capturedPhotos.length === 0) {
+      showMessage('No data to publish', 'error');
+      return;
+    }
+    document.getElementById('postDetailsModal').classList.add('visible');
+    document.getElementById('postTitle').focus();
   }
 
   async function submitPostDetails() {
@@ -1228,6 +1274,8 @@
         totalPhotoSize = 0;
         document.getElementById('photoModal').classList.remove('visible');
         document.getElementById('postDetailsModal').classList.remove('visible');
+        document.getElementById('publishBtn').style.display = 'none';
+        document.getElementById('cancelTripBtn').style.display = 'none';
         document.getElementById('sentCount').textContent = pointsSent;
         document.getElementById('pointCount').textContent = 0;
         document.getElementById('photoCount').textContent = '0 photos captured';
