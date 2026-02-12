@@ -1,72 +1,113 @@
+// Home.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import L from 'leaflet';
 import './Home.css';
 import { useAuth } from '../../context/AuthContext.tsx';
 import BottomNav from '../../components/BottomNav/index.tsx';
 import { postService, Post, gpsDatasetService, GpsDataset, GpsPoint } from '../../services/api.ts';
 
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
+mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN as string;
 
 type FeedItem =
   | { type: 'post'; data: Post }
   | { type: 'dataset'; data: GpsDataset };
 
-function DatasetMap({ gpsPoints, datasetId }: { gpsPoints: GpsPoint[]; datasetId: string }) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<L.Map | null>(null);
+function DatasetMap({
+  gpsPoints,
+  datasetId,
+}: {
+  gpsPoints: GpsPoint[];
+  datasetId: string;
+}) {
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapInstance = useRef<mapboxgl.Map | null>(null);
 
   useEffect(() => {
     if (!mapRef.current || gpsPoints.length === 0) return;
 
-    // Clean up previous map instance
+    // Cleanup previous map instance
     if (mapInstance.current) {
       mapInstance.current.remove();
       mapInstance.current = null;
     }
 
-    const map = L.map(mapRef.current, {
-      zoomControl: true,
-      attributionControl: false,
+    const map = new mapboxgl.Map({
+      container: mapRef.current,
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [gpsPoints[0].longitude, gpsPoints[0].latitude],
+      zoom: 13,
     });
+
     mapInstance.current = map;
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-    }).addTo(map);
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-    const coords: L.LatLngExpression[] = gpsPoints.map(p => [p.latitude, p.longitude]);
+    map.on('load', () => {
+      const coordinates = gpsPoints.map(p => [p.longitude, p.latitude]) as [number, number][];
 
-    // Draw the route polyline
-    const polyline = L.polyline(coords, {
-      color: '#667eea',
-      weight: 4,
-      opacity: 0.8,
-    }).addTo(map);
+      const sourceId = `route-${datasetId}`;
+      const layerId = `route-line-${datasetId}`;
 
-    // Add start and end markers
-    if (coords.length > 0) {
-      L.circleMarker(coords[0], {
-        radius: 8,
-        fillColor: '#4CAF50',
-        color: '#fff',
-        weight: 2,
-        fillOpacity: 1,
-      }).addTo(map).bindPopup('Start');
-
-      if (coords.length > 1) {
-        L.circleMarker(coords[coords.length - 1], {
-          radius: 8,
-          fillColor: '#ff4060',
-          color: '#fff',
-          weight: 2,
-          fillOpacity: 1,
-        }).addTo(map).bindPopup('End');
+      // Route line (polyline equivalent)
+      if (!map.getSource(sourceId)) {
+        map.addSource(sourceId, {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates,
+            },
+          },
+        });
       }
-    }
 
-    // Fit map to route bounds
-    map.fitBounds(polyline.getBounds(), { padding: [30, 30] });
+      if (!map.getLayer(layerId)) {
+        map.addLayer({
+          id: layerId,
+          type: 'line',
+          source: sourceId,
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            'line-color': '#667eea',
+            'line-width': 4,
+            'line-opacity': 0.8,
+          },
+        });
+      }
+
+      // Start marker
+      const start = gpsPoints[0];
+      const startEl = document.createElement('div');
+      startEl.className = 'map-marker map-marker-start';
+      new mapboxgl.Marker({ element: startEl })
+        .setLngLat([start.longitude, start.latitude])
+        .setPopup(new mapboxgl.Popup({ offset: 12 }).setText('Start'))
+        .addTo(map);
+
+      // End marker
+      if (gpsPoints.length > 1) {
+        const end = gpsPoints[gpsPoints.length - 1];
+        const endEl = document.createElement('div');
+        endEl.className = 'map-marker map-marker-end';
+        new mapboxgl.Marker({ element: endEl })
+          .setLngLat([end.longitude, end.latitude])
+          .setPopup(new mapboxgl.Popup({ offset: 12 }).setText('End'))
+          .addTo(map);
+      }
+
+      // Fit bounds
+      const bounds = new mapboxgl.LngLatBounds();
+      coordinates.forEach(c => bounds.extend(c));
+      map.fitBounds(bounds, { padding: 30, duration: 0 });
+    });
 
     return () => {
       if (mapInstance.current) {
@@ -99,13 +140,11 @@ export default function Homepage() {
         gpsDatasetService.getAllDatasets(),
       ]);
 
-      // Combine posts and datasets into a single feed
       const combinedFeed: FeedItem[] = [
         ...postsResponse.posts.map(post => ({ type: 'post' as const, data: post })),
         ...datasetsResponse.datasets.map(dataset => ({ type: 'dataset' as const, data: dataset })),
       ];
 
-      // Sort by creation date (newest first)
       combinedFeed.sort((a, b) => {
         const dateA = new Date(a.data.createdAt).getTime();
         const dateB = new Date(b.data.createdAt).getTime();
@@ -160,9 +199,7 @@ export default function Homepage() {
     <div key={post._id} className="post-card">
       <div className="post-header">
         <div className="post-user-info">
-          <div className="user-avatar">
-            {(post.userName || post.userEmail)[0].toUpperCase()}
-          </div>
+          <div className="user-avatar">{(post.userName || post.userEmail)[0].toUpperCase()}</div>
           <div className="user-details">
             <p className="user-name">{post.userName || post.userEmail}</p>
             <p className="post-time">{formatDate(post.createdAt)}</p>
@@ -194,21 +231,15 @@ export default function Homepage() {
       <div key={dataset._id} className="post-card dataset-card">
         <div className="post-header">
           <div className="post-user-info">
-            <div className="user-avatar dataset-avatar">
-              📍
-            </div>
+            <div className="user-avatar dataset-avatar">📍</div>
             <div className="user-details">
               <p className="user-name">{dataset.title}</p>
               <p className="post-time">{formatDate(dataset.createdAt)}</p>
             </div>
           </div>
           <div className="dataset-badge">
-            <span className="badge-text">
-              📸 {dataset.photoCount} {dataset.photoCount === 1 ? 'Photo' : 'Photos'}
-            </span>
-            <span className="badge-text">
-              📊 {dataset.totalPoints} GPS Points
-            </span>
+            <span className="badge-text">📸 {dataset.photoCount} {dataset.photoCount === 1 ? 'Photo' : 'Photos'}</span>
+            <span className="badge-text">📊 {dataset.totalPoints} GPS Points</span>
           </div>
         </div>
 
@@ -243,6 +274,7 @@ export default function Homepage() {
           >
             ›
           </button>
+
           <div className="carousel-indicators">
             {Array.from({ length: totalSlides }).map((_, idx) => (
               <span
@@ -258,16 +290,12 @@ export default function Homepage() {
         <div className="post-content">
           <p className="post-description">{dataset.description}</p>
           {isMapSlide ? (
-            <p className="dataset-photo-info">
-              🗺️ Route Map • {dataset.totalPoints} GPS points tracked
-            </p>
+            <p className="dataset-photo-info">🗺️ Route Map • {dataset.totalPoints} GPS points tracked</p>
           ) : (
             <p className="dataset-photo-info">
               📸 Photo {slideIndex} of {dataset.photos.length}
               {currentPhoto!.location && (
-                <span className="photo-accuracy">
-                  {' '}• Accuracy: ±{currentPhoto!.location.accuracy.toFixed(0)}m
-                </span>
+                <span className="photo-accuracy"> • Accuracy: ±{currentPhoto!.location.accuracy.toFixed(0)}m</span>
               )}
             </p>
           )}
@@ -275,8 +303,7 @@ export default function Homepage() {
             <span className="stat-item">
               🕒 {isMapSlide
                 ? new Date(dataset.createdAt).toLocaleString()
-                : new Date(currentPhoto!.timestamp).toLocaleString()
-              }
+                : new Date(currentPhoto!.timestamp).toLocaleString()}
             </span>
           </div>
         </div>
@@ -308,9 +335,7 @@ export default function Homepage() {
 
         {!loading && !error && feedItems.length > 0 && (
           <div className="posts-feed">
-            {feedItems.map((item) =>
-              item.type === 'post' ? renderPost(item.data) : renderDataset(item.data)
-            )}
+            {feedItems.map(item => (item.type === 'post' ? renderPost(item.data) : renderDataset(item.data)))}
           </div>
         )}
       </div>
