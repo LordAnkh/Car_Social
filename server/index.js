@@ -430,6 +430,6 @@ app.get('/api/gps-datasets', async (req, res) => {
 });
 
 // Catch-all: serve React app for any non-API, non-static routes
-app.get('*', (req, res) => {
+app.get('/{*path}', (req, res) => {
   res.sendFile(path.join(__dirname, '../build', 'index.html'));
 });
