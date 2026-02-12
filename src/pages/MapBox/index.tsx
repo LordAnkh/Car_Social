@@ -1,7 +1,7 @@
 // Home.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './Home.css';
+import './MapBox.css';
 import { useAuth } from '../../context/AuthContext.tsx';
 import BottomNav from '../../components/BottomNav/index.tsx';
 import { postService, Post, gpsDatasetService, GpsDataset, GpsPoint } from '../../services/api.ts';
