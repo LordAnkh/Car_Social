@@ -1,4 +1,4 @@
-const API_BASE = 'https://api.az318test.uk/api';
+const API_BASE = 'https://az318test.uk/api';
 
 export interface LoginResponse {
   token: string;

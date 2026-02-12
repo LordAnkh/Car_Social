@@ -8,8 +8,8 @@ const BottomNav: React.FC = () => {
   return (
     <nav className="bottom-nav">
       <button onClick={() => navigate('/home')}>Home</button>
-      <button onClick={() => navigate('/create-trip')}>Post</button>
-      <button onClick={() => navigate('/profile')}>Profile</button>
+      <button onClick={() => window.location.href = '/tracker.html'}>Tracker</button>
+      <button onClick={() => navigate('/')}>Post</button>
     </nav>
   );
 };
