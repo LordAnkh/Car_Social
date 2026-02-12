@@ -7,10 +7,10 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
+app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Increase limit for base64 images
 app.use(express.static(path.join(__dirname, '../public'))); // Serve static files from public folder
 app.use(express.static(path.join(__dirname, '../build'))); // Serve React build
-app.use(cors());
 
 // MongoDB connection
 const uri = process.env.MONGODB_URI;
@@ -87,7 +87,7 @@ app.post('/api/signup', async (req, res) => {
     const db = client.db('Car_Database');
     const users = db.collection('user_credentals');
 
-    const { email, password } = req.body;
+    const { email, password, name } = req.body;
 
     // Check if user exists
     const existingUser = await users.findOne({ email });
@@ -102,6 +102,7 @@ app.post('/api/signup', async (req, res) => {
     const newUser = {
       email,
       password: hashedPassword,
+      name: name || null,
       createdAt: new Date(),
     };
 
@@ -190,6 +191,7 @@ app.get('/api/posts', async (req, res) => {
     const allPosts = await posts
       .find({})
       .sort({ createdAt: -1 })
+      .limit(20)
       .toArray();
 
     res.json({ posts: allPosts });
@@ -335,8 +337,61 @@ app.get('/api/locations/:userId', authenticateToken, async (req, res) => {
   }
 });
 
+// Update user profile
+app.put('/api/profile', authenticateToken, async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const users = db.collection('user_credentals');
+
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Name is required' });
+    }
+
+    await users.updateOne(
+      { _id: new ObjectId(req.user.userId) },
+      { $set: { name: name.trim() } }
+    );
+
+    res.json({ message: 'Profile updated successfully', name: name.trim() });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Middleware: accept either API key or JWT token
+const authenticateAPIKeyOrToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const apiKey = req.headers['x-api-key'];
+
+  // Try JWT token first
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
+      if (err) {
+        return res.status(403).json({ message: 'Invalid or expired token' });
+      }
+      req.user = user;
+      next();
+    });
+    return;
+  }
+
+  // Fall back to API key
+  const validKey = process.env.LOCATION_API_KEY || 'your-location-key';
+  if (apiKey && apiKey === validKey) {
+    req.user = null; // No user info with API key auth
+    next();
+    return;
+  }
+
+  return res.status(401).json({ message: 'Authentication required' });
+};
+
 // Save GPS dataset with photos
-app.post('/api/gps-dataset', authenticateAPIKey, async (req, res) => {
+app.post('/api/gps-dataset', authenticateAPIKeyOrToken, async (req, res) => {
   try {
     const db = client.db('Car_Database');
     const datasets = db.collection('gps_datasets');
@@ -360,6 +415,20 @@ app.post('/api/gps-dataset', authenticateAPIKey, async (req, res) => {
       return res.status(400).json({ message: 'Description is required' });
     }
 
+    // Look up user info if authenticated with JWT
+    let userId = 'anonymous';
+    let userName = null;
+    let userEmail = null;
+    if (req.user) {
+      const users = db.collection('user_credentals');
+      const user = await users.findOne({ _id: new ObjectId(req.user.userId) });
+      if (user) {
+        userId = req.user.userId;
+        userName = user.name || null;
+        userEmail = user.email;
+      }
+    }
+
     // Create dataset object
     const dataset = {
       gpsPoints,
@@ -369,7 +438,9 @@ app.post('/api/gps-dataset', authenticateAPIKey, async (req, res) => {
       totalPoints: totalPoints || gpsPoints.length,
       timestamp: new Date(timestamp || new Date()),
       createdAt: new Date(),
-      userId: 'anonymous', // Can be extended to include user ID
+      userId,
+      userName,
+      userEmail,
       title: title.trim(),
       description: description.trim()
     };
@@ -378,7 +449,7 @@ app.post('/api/gps-dataset', authenticateAPIKey, async (req, res) => {
 
     // Also save individual points to locations collection for compatibility
     const locationDocs = gpsPoints.map(point => ({
-      userId: 'anonymous',
+      userId,
       latitude: point.latitude,
       longitude: point.longitude,
       altitude: point.altitude || 0,
@@ -412,19 +483,38 @@ app.get('/api/gps-datasets', async (req, res) => {
     const db = client.db('Car_Database');
     const datasets = db.collection('gps_datasets');
 
-    // Create index for efficient sorting (no-op if already exists)
-    await datasets.createIndex({ createdAt: -1 }).catch(() => {});
-
-    // Fetch all datasets, sorted by newest first
+    // Fetch datasets, sorted by newest first
     const allDatasets = await datasets
       .find({})
       .sort({ createdAt: -1 })
-      .allowDiskUse()
+      .limit(10)
       .toArray();
 
     res.json({ datasets: allDatasets });
   } catch (error) {
     console.error('Fetch GPS datasets error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get a single dataset's photos (for lazy loading)
+app.get('/api/gps-datasets/:id/photos', async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const datasets = db.collection('gps_datasets');
+
+    const dataset = await datasets.findOne(
+      { _id: new ObjectId(req.params.id) },
+      { projection: { photos: 1 } }
+    );
+
+    if (!dataset) {
+      return res.status(404).json({ message: 'Dataset not found' });
+    }
+
+    res.json({ photos: dataset.photos });
+  } catch (error) {
+    console.error('Fetch dataset photos error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

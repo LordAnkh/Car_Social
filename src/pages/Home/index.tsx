@@ -4,10 +4,10 @@ import L from 'leaflet';
 import './Home.css';
 import { useAuth } from '../../context/AuthContext.tsx';
 import BottomNav from '../../components/BottomNav/index.tsx';
-import { postService, Post, gpsDatasetService, GpsDataset, GpsPoint } from '../../services/api.ts';
+import {gpsDatasetService, GpsDataset, GpsPoint, Photo } from '../../services/api.ts';
 
 type FeedItem =
-  | { type: 'post'; data: Post }
+
   | { type: 'dataset'; data: GpsDataset };
 
 function DatasetMap({ gpsPoints, datasetId }: { gpsPoints: GpsPoint[]; datasetId: string }) {
@@ -84,6 +84,8 @@ export default function Homepage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<{ [key: string]: number }>({});
+  const [loadedPhotos, setLoadedPhotos] = useState<{ [key: string]: Photo[] }>({});
+  const [loadingPhotos, setLoadingPhotos] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     fetchAllContent();
@@ -92,14 +94,13 @@ export default function Homepage() {
   const fetchAllContent = async () => {
     try {
       setLoading(true);
-      const [postsResponse, datasetsResponse] = await Promise.all([
-        postService.getAllPosts(),
+      const [datasetsResponse] = await Promise.all([
+      
         gpsDatasetService.getAllDatasets(),
       ]);
 
       // Combine posts and datasets into a single feed
       const combinedFeed: FeedItem[] = [
-        ...postsResponse.posts.map(post => ({ type: 'post' as const, data: post })),
         ...datasetsResponse.datasets.map(dataset => ({ type: 'dataset' as const, data: dataset })),
       ];
 
@@ -117,6 +118,19 @@ export default function Homepage() {
       console.error('Error fetching content:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPhotosForDataset = async (datasetId: string) => {
+    if (loadedPhotos[datasetId] || loadingPhotos[datasetId]) return;
+    setLoadingPhotos(prev => ({ ...prev, [datasetId]: true }));
+    try {
+      const res = await gpsDatasetService.getDatasetPhotos(datasetId);
+      setLoadedPhotos(prev => ({ ...prev, [datasetId]: res.photos }));
+    } catch (err) {
+      console.error('Failed to load photos for dataset', datasetId, err);
+    } finally {
+      setLoadingPhotos(prev => ({ ...prev, [datasetId]: false }));
     }
   };
 
@@ -141,63 +155,40 @@ export default function Homepage() {
   };
 
   const handleNextSlide = (datasetId: string, totalSlides: number) => {
-    setCurrentPhotoIndex(prev => ({
-      ...prev,
-      [datasetId]: ((prev[datasetId] || 0) + 1) % totalSlides,
-    }));
+    const nextIndex = ((currentPhotoIndex[datasetId] || 0) + 1) % totalSlides;
+    if (nextIndex > 0) loadPhotosForDataset(datasetId);
+    setCurrentPhotoIndex(prev => ({ ...prev, [datasetId]: nextIndex }));
   };
 
   const handlePrevSlide = (datasetId: string, totalSlides: number) => {
-    setCurrentPhotoIndex(prev => ({
-      ...prev,
-      [datasetId]: ((prev[datasetId] || 0) - 1 + totalSlides) % totalSlides,
-    }));
+    const prevIndex = ((currentPhotoIndex[datasetId] || 0) - 1 + totalSlides) % totalSlides;
+    if (prevIndex > 0) loadPhotosForDataset(datasetId);
+    setCurrentPhotoIndex(prev => ({ ...prev, [datasetId]: prevIndex }));
   };
 
-  const renderPost = (post: Post) => (
-    <div key={post._id} className="post-card">
-      <div className="post-header">
-        <div className="post-user-info">
-          <div className="user-avatar">
-            {(post.userName || post.userEmail)[0].toUpperCase()}
-          </div>
-          <div className="user-details">
-            <p className="user-name">{post.userName || post.userEmail}</p>
-            <p className="post-time">{formatDate(post.createdAt)}</p>
-          </div>
-        </div>
-      </div>
 
-      <div className="post-image">
-        <img src={post.imageUrl} alt={post.description} />
-      </div>
-
-      <div className="post-content">
-        <p className="post-description">{post.description}</p>
-        <div className="post-stats">
-          <span className="post-likes">❤️ {post.likesCount}</span>
-          <span className="post-comments">💬 {post.commentsCount}</span>
-        </div>
-      </div>
-    </div>
-  );
+          
+      
+  
 
   const renderDataset = (dataset: GpsDataset) => {
     const slideIndex = currentPhotoIndex[dataset._id] || 0;
-    const totalSlides = dataset.photos.length + 1; // +1 for map slide
+    const totalSlides = dataset.photoCount + 1; // +1 for map slide
     const isMapSlide = slideIndex === 0;
-    const currentPhoto = isMapSlide ? null : dataset.photos[slideIndex - 1];
+    const photos = loadedPhotos[dataset._id];
+    const currentPhoto = isMapSlide ? null : photos ? photos[slideIndex - 1] : null;
+    const isPhotoLoading = loadingPhotos[dataset._id];
 
     return (
       <div key={dataset._id} className="post-card dataset-card">
         <div className="post-header">
           <div className="post-user-info">
             <div className="user-avatar dataset-avatar">
-              📍
+              {('📍')}
             </div>
             <div className="user-details">
-              <p className="user-name">{dataset.title}</p>
-              <p className="post-time">{formatDate(dataset.createdAt)}</p>
+              <p className="user-name">{dataset.userName || dataset.userEmail || 'Anonymous'}</p>
+              <p className="post-time">{dataset.title} • {formatDate(dataset.createdAt)}</p>
             </div>
           </div>
           <div className="dataset-badge">
@@ -213,14 +204,18 @@ export default function Homepage() {
         <div className="dataset-carousel">
           {isMapSlide ? (
             <DatasetMap gpsPoints={dataset.gpsPoints} datasetId={dataset._id} />
+          ) : isPhotoLoading || !currentPhoto ? (
+            <div className="carousel-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+              <p>Loading photos...</p>
+            </div>
           ) : (
             <div className="carousel-image">
-              <img src={currentPhoto!.base64} alt={`Slide ${slideIndex}`} />
-              {currentPhoto!.location && (
+              <img src={currentPhoto.base64} alt={`Slide ${slideIndex}`} />
+              {currentPhoto.location && (
                 <div className="photo-location-overlay">
                   <span className="location-pin">📍</span>
                   <span className="location-coords">
-                    {currentPhoto!.location.latitude.toFixed(6)}, {currentPhoto!.location.longitude.toFixed(6)}
+                    {currentPhoto.location.latitude.toFixed(6)}, {currentPhoto.location.longitude.toFixed(6)}
                   </span>
                 </div>
               )}
@@ -246,7 +241,10 @@ export default function Homepage() {
               <span
                 key={idx}
                 className={`indicator ${idx === slideIndex ? 'active' : ''} ${idx === 0 ? 'map-indicator' : ''}`}
-                onClick={() => setCurrentPhotoIndex(prev => ({ ...prev, [dataset._id]: idx }))}
+                onClick={() => {
+                  if (idx > 0) loadPhotosForDataset(dataset._id);
+                  setCurrentPhotoIndex(prev => ({ ...prev, [dataset._id]: idx }));
+                }}
                 title={idx === 0 ? 'Route Map' : `Photo ${idx}`}
               />
             ))}
@@ -259,21 +257,23 @@ export default function Homepage() {
             <p className="dataset-photo-info">
               🗺️ Route Map • {dataset.totalPoints} GPS points tracked
             </p>
-          ) : (
+          ) : currentPhoto ? (
             <p className="dataset-photo-info">
-              📸 Photo {slideIndex} of {dataset.photos.length}
-              {currentPhoto!.location && (
+              📸 Photo {slideIndex} of {dataset.photoCount}
+              {currentPhoto.location && (
                 <span className="photo-accuracy">
-                  {' '}• Accuracy: ±{currentPhoto!.location.accuracy.toFixed(0)}m
+                  {' '}• Accuracy: ±{currentPhoto.location.accuracy.toFixed(0)}m
                 </span>
               )}
             </p>
+          ) : (
+            <p className="dataset-photo-info">📸 Loading photo {slideIndex}...</p>
           )}
           <div className="dataset-stats">
             <span className="stat-item">
-              🕒 {isMapSlide
+              🕒 {isMapSlide || !currentPhoto
                 ? new Date(dataset.createdAt).toLocaleString()
-                : new Date(currentPhoto!.timestamp).toLocaleString()
+                : new Date(currentPhoto.timestamp).toLocaleString()
               }
             </span>
           </div>
@@ -303,14 +303,14 @@ export default function Homepage() {
             <p>No content yet. Be the first to share!</p>
           </div>
         )}
+        {!loading && !error && feedItems.map((item) => {
+    if (item.type === 'dataset') {
+      return renderDataset(item.data);
+    }
+    return null;
+  })}
 
-        {!loading && !error && feedItems.length > 0 && (
-          <div className="posts-feed">
-            {feedItems.map((item) =>
-              item.type === 'post' ? renderPost(item.data) : renderDataset(item.data)
-            )}
-          </div>
-        )}
+        
       </div>
 
       <BottomNav />

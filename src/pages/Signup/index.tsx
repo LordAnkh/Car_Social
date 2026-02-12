@@ -5,6 +5,7 @@ import './Signup.css';
 
 
 const Signup: React.FC = () => {
+  const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
@@ -39,9 +40,10 @@ const Signup: React.FC = () => {
 
     // Handle signup logic here
     try {
-      await authService.signup(email, password);
+      await authService.signup(email, password, name || undefined);
 
       setSuccess('Account created successfully! You can now log in.');
+      setName('');
       setEmail('');
       setPassword('');
       setConfirmPassword('');
@@ -58,6 +60,17 @@ const Signup: React.FC = () => {
         <h2>Sign Up</h2>
         
         <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="name">Username</label>
+            <input
+              type="text"
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Choose a username"
+            />
+          </div>
+
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input

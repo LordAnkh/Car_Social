@@ -16,7 +16,6 @@ return (
 <Route path="/" element={<Login/>} />
       <Route path="/home" element={<Homepage/>} />
       <Route path="/signup" element={<Signup/>} />
-      <Route path="/create-trip" element={<CreatePost/>} />
       <Route path="/mapbox" element={<MapBox/>} />
 </Routes>
 </AuthProvider>

@@ -1,4 +1,6 @@
-const API_BASE = 'https://az318test.uk/api';
+const API_BASE = window.location.hostname === 'localhost'
+  ? 'http://localhost:5000/api'
+  : 'https://az318test.uk/api';
 
 export interface LoginResponse {
   token: string;
@@ -34,11 +36,11 @@ export const authService = {
     return data;
   },
 
-  signup: async (email: string, password: string): Promise<SignupResponse> => {
+  signup: async (email: string, password: string, name?: string): Promise<SignupResponse> => {
     const response = await fetch(`${API_BASE}/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, name }),
     });
 
     const data = await response.json();
@@ -51,86 +53,7 @@ export const authService = {
   },
 };
 
-export interface Post {
-  _id: string;
-  userId: string;
-  userEmail: string;
-  userName?: string;
-  description: string;
-  imageUrl: string;
-  createdAt: string;
-  updatedAt: string;
-  likes: string[];
-  likesCount: number;
-  comments: Comment[];
-  commentsCount: number;
-}
 
-export interface Comment {
-  commentId: string;
-  userId: string;
-  userEmail: string;
-  userName?: string;
-  text: string;
-  createdAt: string;
-}
-
-export interface GetPostsResponse {
-  posts: Post[];
-}
-
-export const postService = {
-  createPost: async (
-    token: string,
-    description: string,
-    image: string
-  ): Promise<CreatePostResponse> => {
-    const response = await fetch(`${API_BASE}/posts`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ description, image }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to create post');
-    }
-
-    return response.json();
-  },
-
-  getAllPosts: async (): Promise<GetPostsResponse> => {
-    const response = await fetch(`${API_BASE}/posts`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch posts');
-    }
-
-    return response.json();
-  },
-
-  getUserPosts: async (userId: string): Promise<GetPostsResponse> => {
-    const response = await fetch(`${API_BASE}/posts/user/${userId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch user posts');
-    }
-
-    return response.json();
-  },
-};
 
 export interface GpsPoint {
   latitude: number;
@@ -163,6 +86,8 @@ export interface GpsDataset {
   timestamp: string;
   createdAt: string;
   userId: string;
+  userName?: string;
+  userEmail?: string;
   title: string;
   description: string;
 }
@@ -182,6 +107,21 @@ export const gpsDatasetService = {
 
     if (!response.ok) {
       throw new Error('Failed to fetch GPS datasets');
+    }
+
+    return response.json();
+  },
+
+  getDatasetPhotos: async (datasetId: string): Promise<{ photos: Photo[] }> => {
+    const response = await fetch(`${API_BASE}/gps-datasets/${datasetId}/photos`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch dataset photos');
     }
 
     return response.json();

@@ -551,6 +551,7 @@
       <span class="dot"></span>
       <span id="statusText">IDLE</span>
     </div>
+    <div id="userBadge" style="display:none;background:var(--accent-dim);color:var(--accent);padding:4px 10px;border-radius:12px;font-size:12px;font-weight:600;"></div>
   </div>
 
   <!-- Hidden camera input -->
@@ -667,6 +668,19 @@
   let capturedPhotos = []; // Array to store multiple compressed photos
   let totalPhotoSize = 0;
   let currentPosition = null; // Store current GPS position for photo capture
+
+  // Show logged-in user badge
+  try {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      const badge = document.getElementById('userBadge');
+      if (badge) {
+        badge.textContent = user.name || user.email;
+        badge.style.display = 'block';
+      }
+    }
+  } catch (e) {}
 
   // Auto-configure server URL and API key
   const defaultServerUrl = window.location.origin; // Automatically use current domain
@@ -1255,12 +1269,18 @@
       console.log('Sending to:', `${serverUrl}/api/gps-dataset`);
       addLog(`Sending to: ${serverUrl}`);
 
+      // Use JWT token if logged in, otherwise fall back to API key
+      const authToken = localStorage.getItem('token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      } else {
+        headers['X-API-Key'] = apiKey;
+      }
+
       const response = await fetch(`${serverUrl}/api/gps-dataset`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': apiKey
-        },
+        headers,
         body: JSON.stringify(dataset)
       });
 
