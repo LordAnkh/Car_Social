@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Guides</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.18.1/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.18.1/mapbox-gl.js"></script>
+<style>
+body { margin: 0; padding: 0; }
+#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoidGhlbG9yZGFuayIsImEiOiJjbWxmc2FkMWIwNWRuM2RxOXNpZGI4NnFqIn0.Fd12UfCaZmt9iX9D9iF5Qw';
+    const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/dark-v11', // Use the standard style for the map
+        projection: 'globe', // display the map as a globe
+        zoom: 15, // initial zoom level, 0 is the world view, higher values zoom in
+        center: [-75.9695,42.0894] // center the map on this longitude and latitude
+    });
+
+    map.addControl(new mapboxgl.NavigationControl());
+    map.scrollZoom.disable();
+
+    map.on('style.load', () => {
+        map.setFog({}); // Set the default atmosphere style
+    });
+</script>
+
+</body>
+</html>
