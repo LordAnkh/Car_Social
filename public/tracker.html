@@ -1012,7 +1012,7 @@
 
     try {
       // Compress image to JPG under 5MB
-      const compressed = await compressImage(file, 5 * 1024 * 1024);
+      const compressed = await compressImage(file, 500 * 1024);
 
       // Find the closest GPS point by timestamp
       const captureTime = new Date().toISOString();
@@ -1196,7 +1196,7 @@
           let height = img.height;
 
           // Scale down if too large
-          const maxDimension = 2000;
+          const maxDimension = 1200;
           if (width > maxDimension || height > maxDimension) {
             if (width > height) {
               height = (height / width) * maxDimension;
@@ -1224,7 +1224,7 @@
           }
 
           if (size > maxSize) {
-            reject(new Error('Could not compress image below 5MB'));
+            reject(new Error('Could not compress image below 500KB'));
           } else {
             resolve({ base64, size });
           }
@@ -1255,21 +1255,7 @@
     }
 
     try {
-      const dataset = {
-        gpsPoints: gpsPointsArray,
-        photos: capturedPhotos,
-        totalPhotoSize: totalPhotoSize,
-        timestamp: new Date().toISOString(),
-        totalPoints: gpsPointsArray.length,
-        photoCount: capturedPhotos.length,
-        title: title,
-        description: description
-      };
-
-      console.log('Sending to:', `${serverUrl}/api/gps-dataset`);
-      addLog(`Sending to: ${serverUrl}`);
-
-      // Use JWT token if logged in, otherwise fall back to API key
+      // Build auth headers
       const authToken = localStorage.getItem('token');
       const headers = { 'Content-Type': 'application/json' };
       if (authToken) {
@@ -1278,10 +1264,55 @@
         headers['X-API-Key'] = apiKey;
       }
 
-      const response = await fetch(`${serverUrl}/api/gps-dataset`, {
+      // Step 1: Upload each photo to Azure via server
+      addLog(`Uploading ${capturedPhotos.length} photos to Azure...`);
+      showMessage(`Uploading ${capturedPhotos.length} photos...`, 'info');
+
+      const photoKeys = [];
+      for (let i = 0; i < capturedPhotos.length; i++) {
+        const photo = capturedPhotos[i];
+        addLog(`Uploading photo ${i + 1}/${capturedPhotos.length}...`);
+
+        const uploadRes = await fetch(`${serverUrl}/api/photos/upload`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            base64: photo.base64,
+            size: photo.size,
+            timestamp: photo.timestamp,
+            location: photo.location,
+          })
+        });
+
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json().catch(() => ({}));
+          throw new Error(`Photo ${i + 1} upload failed: ${err.message || uploadRes.status}`);
+        }
+
+        const uploadData = await uploadRes.json();
+        photoKeys.push(uploadData.photoKey);
+        addLog(`✓ Photo ${i + 1} uploaded (key: ${uploadData.photoKey})`);
+      }
+
+      // Step 2: Save the trip with photo keys (no base64 in trip document)
+      addLog('Saving trip...');
+      showMessage('Saving trip...', 'info');
+
+      const trip = {
+        gpsPoints: gpsPointsArray,
+        photoKeys: photoKeys,
+        totalPhotoSize: totalPhotoSize,
+        timestamp: new Date().toISOString(),
+        totalPoints: gpsPointsArray.length,
+        photoCount: capturedPhotos.length,
+        title: title,
+        description: description
+      };
+
+      const response = await fetch(`${serverUrl}/api/trips`, {
         method: 'POST',
         headers,
-        body: JSON.stringify(dataset)
+        body: JSON.stringify(trip)
       });
 
       if (response.ok) {
@@ -1308,8 +1339,8 @@
       }
     } catch (err) {
       console.error('Send dataset error:', err);
-      showMessage('Failed to send dataset: ' + err.message, 'error');
-      addLog('⚠ Failed to send dataset: ' + err.message, 'error');
+      showMessage('Failed to send: ' + err.message, 'error');
+      addLog('⚠ Failed to send: ' + err.message, 'error');
     }
   }
 

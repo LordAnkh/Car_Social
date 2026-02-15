@@ -1,11 +1,11 @@
 import React from "react";
 import { Routes, Route } from 'react-router-dom';
-import Homepage from "./pages/Home/index.tsx";
-import Login from "./pages/Login/index.tsx";
-import Signup from "./pages/Signup/index.tsx";
-import MapBox from "./pages/MapBox/index.tsx";
-import CreatePost from "./pages/CreatePost/index.tsx";
-import { AuthProvider } from "./context/AuthContext.tsx";
+import Homepage from "./pages/Home";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import MapBox from "./pages/MapBox";
+
+import { AuthProvider } from "./context/AuthContext";
 //import InformationCenter from "./Tracker.js";
 //import Financial from "./Financial.js";
 

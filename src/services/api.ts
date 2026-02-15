@@ -2,6 +2,7 @@ const API_BASE = window.location.hostname === 'localhost'
   ? 'http://localhost:5000/api'
   : 'https://az318test.uk/api';
 
+
 export interface LoginResponse {
   token: string;
   user: {
@@ -65,7 +66,10 @@ export interface GpsPoint {
 }
 
 export interface Photo {
-  base64: string;
+  _id: string;
+  photoKey: string;
+  url: string;
+  filename: string;
   size: number;
   timestamp: string;
   location?: {
@@ -76,10 +80,10 @@ export interface Photo {
   };
 }
 
-export interface GpsDataset {
+export interface Trip {
   _id: string;
   gpsPoints: GpsPoint[];
-  photos: Photo[];
+  photoKeys: string[];
   totalPhotoSize: number;
   photoCount: number;
   totalPoints: number;
@@ -92,13 +96,13 @@ export interface GpsDataset {
   description: string;
 }
 
-export interface GetDatasetsResponse {
-  datasets: GpsDataset[];
+export interface GetTripsResponse {
+  datasets: Trip[];
 }
 
-export const gpsDatasetService = {
-  getAllDatasets: async (): Promise<GetDatasetsResponse> => {
-    const response = await fetch(`${API_BASE}/gps-datasets`, {
+export const tripService = {
+  getAllTrips: async (): Promise<GetTripsResponse> => {
+    const response = await fetch(`${API_BASE}/trips`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -106,14 +110,14 @@ export const gpsDatasetService = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch GPS datasets');
+      throw new Error('Failed to fetch trips');
     }
 
     return response.json();
   },
 
-  getDatasetPhotos: async (datasetId: string): Promise<{ photos: Photo[] }> => {
-    const response = await fetch(`${API_BASE}/gps-datasets/${datasetId}/photos`, {
+  getTripPoints: async (tripId: string): Promise<{ gpsPoints: GpsPoint[] }> => {
+    const response = await fetch(`${API_BASE}/trips/${tripId}/points`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -121,7 +125,22 @@ export const gpsDatasetService = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch dataset photos');
+      throw new Error('Failed to fetch trip GPS points');
+    }
+
+    return response.json();
+  },
+
+  getTripPhotos: async (tripId: string): Promise<{ photos: Photo[] }> => {
+    const response = await fetch(`${API_BASE}/trips/${tripId}/photos`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch trip photos');
     }
 
     return response.json();

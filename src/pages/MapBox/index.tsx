@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './MapBox.css';
-import { useAuth } from '../../context/AuthContext.tsx';
-import BottomNav from '../../components/BottomNav/index.tsx';
-import { gpsDatasetService, GpsDataset, GpsPoint, Photo } from '../../services/api.ts';
+import { useAuth } from '../../context/AuthContext';
+import BottomNav from '../../components/BottomNav';
+import { tripService, Trip, GpsPoint, Photo } from '../../services/api';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const mapboxgl = require('mapbox-gl');
@@ -13,7 +13,7 @@ require('mapbox-gl/dist/mapbox-gl.css');
 mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN as string;
 
 type FeedItem =
-  | { type: 'dataset'; data: GpsDataset };
+  | { type: 'trip'; data: Trip };
 
 function DatasetMap({
   gpsPoints,
@@ -138,11 +138,11 @@ export default function Homepage() {
     try {
       setLoading(true);
       const [datasetsResponse] = await Promise.all([
-        gpsDatasetService.getAllDatasets(),
+        tripService.getAllTrips(),
       ]);
 
       const combinedFeed: FeedItem[] = [
-        ...datasetsResponse.datasets.map(dataset => ({ type: 'dataset' as const, data: dataset })),
+        ...datasetsResponse.datasets.map(dataset => ({ type: 'trip' as const, data: dataset })),
       ];
 
       combinedFeed.sort((a, b) => {
@@ -165,7 +165,7 @@ export default function Homepage() {
     if (loadedPhotos[datasetId] || loadingPhotos[datasetId]) return;
     setLoadingPhotos(prev => ({ ...prev, [datasetId]: true }));
     try {
-      const res = await gpsDatasetService.getDatasetPhotos(datasetId);
+      const res = await tripService.getTripPhotos(datasetId);
       setLoadedPhotos(prev => ({ ...prev, [datasetId]: res.photos }));
     } catch (err) {
       console.error('Failed to load photos for dataset', datasetId, err);
@@ -206,7 +206,7 @@ export default function Homepage() {
     setCurrentPhotoIndex(prev => ({ ...prev, [datasetId]: prevIndex }));
   };
 
-  const renderDataset = (dataset: GpsDataset) => {
+  const renderDataset = (dataset: Trip) => {
     const slideIndex = currentPhotoIndex[dataset._id] || 0;
     const totalSlides = dataset.photoCount + 1; // +1 for map slide
     const isMapSlide = slideIndex === 0;
@@ -241,7 +241,7 @@ export default function Homepage() {
             </div>
           ) : (
             <div className="carousel-image">
-              <img src={currentPhoto.base64} alt={`Slide ${slideIndex}`} />
+              <img src={currentPhoto.url} alt={`Slide ${slideIndex}`} />
               {currentPhoto.location && (
                 <div className="photo-location-overlay">
                   <span className="location-pin">📍</span>

@@ -5,12 +5,13 @@ const cors = require('cors');
 const { MongoClient, ObjectId } = require('mongodb');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions, StorageSharedKeyCredential } = require('@azure/storage-blob');
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Increase limit for base64 images
-app.use(express.static(path.join(__dirname, '../public'))); // Serve static files from public folder
-app.use(express.static(path.join(__dirname, '../build'))); // Serve React build
+app.use(express.json({ limit: '10mb' }));
+app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, '../build')));
 
 // MongoDB connection
 const uri = process.env.MONGODB_URI;
@@ -20,17 +21,58 @@ if (!uri) {
 }
 
 const client = new MongoClient(uri, {
-  family: 4, // Force IPv4 to avoid some DNS resolution issues
+  family: 4,
+  maxPoolSize: 5,
+  minPoolSize: 1,
+  maxIdleTimeMS: 30000,
 });
 
-// Connect to MongoDB once at startup
+// Azure Blob Storage setup
+const azureConnectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+if (!azureConnectionString) {
+  console.error('Error: AZURE_STORAGE_CONNECTION_STRING not set');
+  throw new Error('AZURE_STORAGE_CONNECTION_STRING environment variable is not defined');
+}
+const blobServiceClient = BlobServiceClient.fromConnectionString(azureConnectionString);
+const containerName = 'trip-photos';
+const containerClient = blobServiceClient.getContainerClient(containerName);
+
+// Parse account name and key from connection string for SAS generation
+const accountName = azureConnectionString.match(/AccountName=([^;]+)/)?.[1];
+const accountKey = azureConnectionString.match(/AccountKey=([^;]+)/)?.[1];
+const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+
+// Generate a temporary SAS URL for a blob (valid for 1 hour)
+function generateSasUrl(photoKey) {
+  const sasToken = generateBlobSASQueryParameters({
+    containerName,
+    blobName: photoKey,
+    permissions: BlobSASPermissions.parse('r'),
+    startsOn: new Date(),
+    expiresOn: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+  }, sharedKeyCredential).toString();
+
+  return `https://${accountName}.blob.core.windows.net/${containerName}/${photoKey}?${sasToken}`;
+}
+
+async function ensureContainer() {
+  try {
+    await containerClient.createIfNotExists();
+    console.log(`Azure container "${containerName}" ready`);
+  } catch (error) {
+    console.error('Failed to create Azure container:', error);
+  }
+}
+
+// Connect to MongoDB and Azure at startup
 async function startServer() {
   try {
     await client.connect();
     console.log('Connected to MongoDB');
+    await ensureContainer();
     app.listen(5000, () => console.log('Server running on port 5000'));
   } catch (error) {
-    console.error('Failed to connect to MongoDB:', error);
+    console.error('Failed to start server:', error);
   }
 }
 startServer();
@@ -43,35 +85,30 @@ app.post('/api/login', async (req, res) => {
 
     const { email, password } = req.body;
 
-    // Find user by email
     const user = await users.findOne({ email });
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Compare passwords
     const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       { userId: user._id.toString(), email: user.email },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '24h' }
     );
 
-    // Return user data (without password)
     res.json({
       token,
       user: {
         id: user._id,
         email: user.email,
         name: user.name,
-        // Add other user fields
       }
     });
 
@@ -89,16 +126,13 @@ app.post('/api/signup', async (req, res) => {
 
     const { email, password, name } = req.body;
 
-    // Check if user exists
     const existingUser = await users.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
     const newUser = {
       email,
       password: hashedPassword,
@@ -118,7 +152,7 @@ app.post('/api/signup', async (req, res) => {
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ message: 'Access token required' });
@@ -132,74 +166,6 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
-
-// Create post endpoint
-app.post('/api/posts', authenticateToken, async (req, res) => {
-  try {
-    const db = client.db('Car_Database');
-    const posts = db.collection('posts');
-    const users = db.collection('user_credentals');
-
-    const { description, image } = req.body;
-
-    // Validate input
-    if (!description || !image) {
-      return res.status(400).json({ message: 'Description and image are required' });
-    }
-
-    // Get user info from database
-    const user = await users.findOne({ _id: new ObjectId(req.user.userId) });
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Create post object following the schema
-    const newPost = {
-      userId: req.user.userId,
-      userEmail: user.email,
-      userName: user.name || null,
-      description,
-      imageUrl: image,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      likes: [],
-      likesCount: 0,
-      comments: [],
-      commentsCount: 0
-    };
-
-    const result = await posts.insertOne(newPost);
-
-    res.status(201).json({
-      message: 'Post created successfully',
-      post: { ...newPost, _id: result.insertedId }
-    });
-  } catch (error) {
-    console.error('Create post error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Get all posts endpoint
-app.get('/api/posts', async (req, res) => {
-  try {
-    const db = client.db('Car_Database');
-    const posts = db.collection('posts');
-
-    // Fetch all posts, sorted by newest first
-    const allPosts = await posts
-      .find({})
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .toArray();
-
-    res.json({ posts: allPosts });
-  } catch (error) {
-    console.error('Fetch posts error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
 
 // Get posts by user endpoint
 app.get('/api/posts/user/:userId', async (req, res) => {
@@ -219,7 +185,6 @@ app.get('/api/posts/user/:userId', async (req, res) => {
   }
 });
 
-// Location tracking endpoints
 // Middleware to verify API key for location tracking
 const authenticateAPIKey = (req, res, next) => {
   const apiKey = req.headers['x-api-key'];
@@ -239,14 +204,12 @@ app.post('/api/location', authenticateAPIKey, async (req, res) => {
 
     const { latitude, longitude, altitude, speed, accuracy, timestamp, userId } = req.body;
 
-    // Validate required fields
     if (latitude === undefined || longitude === undefined) {
       return res.status(400).json({ message: 'Latitude and longitude are required' });
     }
 
-    // Create location document
     const locationData = {
-      userId: userId || 'anonymous', // Optional user association
+      userId: userId || 'anonymous',
       latitude,
       longitude,
       altitude: altitude || 0,
@@ -280,7 +243,6 @@ app.post('/api/locations/batch', authenticateAPIKey, async (req, res) => {
       return res.status(400).json({ message: 'Locations array is required' });
     }
 
-    // Prepare batch insert
     const locationDocs = locationArray.map(loc => ({
       userId: userId || 'anonymous',
       latitude: loc.latitude,
@@ -310,7 +272,6 @@ app.get('/api/locations/:userId', authenticateToken, async (req, res) => {
     const db = client.db('Car_Database');
     const locations = db.collection('locations');
 
-    // Optional query params for filtering
     const { startDate, endDate, limit = 100 } = req.query;
 
     const query = { userId: req.params.userId };
@@ -366,7 +327,6 @@ const authenticateAPIKeyOrToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const apiKey = req.headers['x-api-key'];
 
-  // Try JWT token first
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1];
     jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
@@ -379,10 +339,9 @@ const authenticateAPIKeyOrToken = (req, res, next) => {
     return;
   }
 
-  // Fall back to API key
   const validKey = process.env.LOCATION_API_KEY || 'your-location-key';
   if (apiKey && apiKey === validKey) {
-    req.user = null; // No user info with API key auth
+    req.user = null;
     next();
     return;
   }
@@ -390,21 +349,71 @@ const authenticateAPIKeyOrToken = (req, res, next) => {
   return res.status(401).json({ message: 'Authentication required' });
 };
 
-// Save GPS dataset with photos
-app.post('/api/gps-dataset', authenticateAPIKeyOrToken, async (req, res) => {
+// Upload a photo to Azure Blob Storage
+app.post('/api/photos/upload', authenticateAPIKeyOrToken, async (req, res) => {
+  try {
+    const { base64, size, timestamp, location } = req.body;
+
+    if (!base64) {
+      return res.status(400).json({ message: 'base64 image data is required' });
+    }
+
+    // Generate a unique blob name
+    const photoKey = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.jpg`;
+
+    // Strip the data:image/...;base64, prefix if present
+    const base64Data = base64.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // Upload to Azure Blob Storage
+    const blockBlobClient = containerClient.getBlockBlobClient(photoKey);
+    await blockBlobClient.uploadData(buffer, {
+      blobHTTPHeaders: { blobContentType: 'image/jpeg' },
+    });
+
+    const photoUrl = blockBlobClient.url;
+
+    // Save photo metadata to MongoDB
+    const db = client.db('Car_Database');
+    const photos = db.collection('photos');
+
+    const photoDoc = {
+      photoKey,
+      url: photoUrl,
+      filename: photoKey,
+      size: size || buffer.length,
+      timestamp: timestamp ? new Date(timestamp) : new Date(),
+      location: location || null,
+      createdAt: new Date(),
+    };
+
+    const result = await photos.insertOne(photoDoc);
+
+    res.status(201).json({
+      photoKey,
+      photoId: result.insertedId,
+      url: photoUrl,
+    });
+  } catch (error) {
+    console.error('Photo upload error:', error);
+    res.status(500).json({ message: 'Failed to upload photo' });
+  }
+});
+
+// Save a trip (GPS data + photo keys)
+app.post('/api/trips', authenticateAPIKeyOrToken, async (req, res) => {
   try {
     const db = client.db('Car_Database');
-    const datasets = db.collection('gps_datasets');
+    const trips = db.collection('trips');
 
-    const { gpsPoints, photos, totalPhotoSize, timestamp, totalPoints, photoCount, title, description } = req.body;
+    const { gpsPoints, photoKeys, totalPhotoSize, timestamp, totalPoints, photoCount, title, description } = req.body;
 
-    // Validate input
     if (!gpsPoints || !Array.isArray(gpsPoints) || gpsPoints.length === 0) {
       return res.status(400).json({ message: 'GPS points array is required' });
     }
 
-    if (!photos || !Array.isArray(photos) || photos.length === 0) {
-      return res.status(400).json({ message: 'Photos array is required' });
+    if (!photoKeys || !Array.isArray(photoKeys) || photoKeys.length === 0) {
+      return res.status(400).json({ message: 'Photo keys array is required' });
     }
 
     if (!title || !title.trim()) {
@@ -429,12 +438,11 @@ app.post('/api/gps-dataset', authenticateAPIKeyOrToken, async (req, res) => {
       }
     }
 
-    // Create dataset object
-    const dataset = {
+    const trip = {
       gpsPoints,
-      photos,
+      photoKeys,
       totalPhotoSize: totalPhotoSize || 0,
-      photoCount: photoCount || photos.length,
+      photoCount: photoCount || photoKeys.length,
       totalPoints: totalPoints || gpsPoints.length,
       timestamp: new Date(timestamp || new Date()),
       createdAt: new Date(),
@@ -445,9 +453,9 @@ app.post('/api/gps-dataset', authenticateAPIKeyOrToken, async (req, res) => {
       description: description.trim()
     };
 
-    const result = await datasets.insertOne(dataset);
+    const result = await trips.insertOne(trip);
 
-    // Also save individual points to locations collection for compatibility
+    // Also save individual points to locations collection
     const locationDocs = gpsPoints.map(point => ({
       userId,
       latitude: point.latitude,
@@ -457,7 +465,7 @@ app.post('/api/gps-dataset', authenticateAPIKeyOrToken, async (req, res) => {
       accuracy: point.accuracy || 0,
       timestamp: new Date(point.timestamp),
       createdAt: new Date(),
-      datasetId: result.insertedId
+      tripId: result.insertedId
     }));
 
     if (locationDocs.length > 0) {
@@ -465,56 +473,88 @@ app.post('/api/gps-dataset', authenticateAPIKeyOrToken, async (req, res) => {
     }
 
     res.status(201).json({
-      message: 'GPS dataset saved successfully',
-      datasetId: result.insertedId,
+      message: 'Trip saved successfully',
+      tripId: result.insertedId,
       pointsSaved: gpsPoints.length,
-      photoCount: photos.length,
-      totalPhotoSize: totalPhotoSize
+      photoCount: photoKeys.length,
     });
   } catch (error) {
-    console.error('Save GPS dataset error:', error);
+    console.error('Save trip error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Get all GPS datasets
-app.get('/api/gps-datasets', async (req, res) => {
+// Get all trips (exclude gpsPoints to keep response small)
+app.get('/api/trips', async (req, res) => {
   try {
     const db = client.db('Car_Database');
-    const datasets = db.collection('gps_datasets');
+    const trips = db.collection('trips');
 
-    // Fetch datasets, sorted by newest first
-    const allDatasets = await datasets
-      .find({})
+    const allTrips = await trips
+      .find({}, { projection: { gpsPoints: 0 } })
       .sort({ createdAt: -1 })
       .limit(10)
       .toArray();
 
-    res.json({ datasets: allDatasets });
+    res.json({ datasets: allTrips });
   } catch (error) {
-    console.error('Fetch GPS datasets error:', error);
+    console.error('Fetch trips error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Get a single dataset's photos (for lazy loading)
-app.get('/api/gps-datasets/:id/photos', async (req, res) => {
+// Get a trip's GPS points
+app.get('/api/trips/:id/points', async (req, res) => {
   try {
     const db = client.db('Car_Database');
-    const datasets = db.collection('gps_datasets');
+    const trips = db.collection('trips');
 
-    const dataset = await datasets.findOne(
+    const trip = await trips.findOne(
       { _id: new ObjectId(req.params.id) },
-      { projection: { photos: 1 } }
+      { projection: { gpsPoints: 1 } }
     );
 
-    if (!dataset) {
-      return res.status(404).json({ message: 'Dataset not found' });
+    if (!trip) {
+      return res.status(404).json({ message: 'Trip not found' });
     }
 
-    res.json({ photos: dataset.photos });
+    res.json({ gpsPoints: trip.gpsPoints });
   } catch (error) {
-    console.error('Fetch dataset photos error:', error);
+    console.error('Fetch trip points error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get a trip's photos (metadata + Azure URLs from photos collection)
+app.get('/api/trips/:id/photos', async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const trips = db.collection('trips');
+    const photosCollection = db.collection('photos');
+
+    const trip = await trips.findOne(
+      { _id: new ObjectId(req.params.id) },
+      { projection: { photoKeys: 1 } }
+    );
+
+    if (!trip) {
+      return res.status(404).json({ message: 'Trip not found' });
+    }
+
+    // Look up photo metadata from the photos collection by photoKey
+    const photos = await photosCollection
+      .find({ photoKey: { $in: trip.photoKeys } })
+      .toArray();
+
+    // Generate temporary SAS URLs for each photo
+    const photosWithSas = photos.map(photo => ({
+      ...photo,
+      url: generateSasUrl(photo.photoKey),
+    }));
+
+    res.json({ photos: photosWithSas });
+  } catch (error) {
+    console.error('Fetch trip photos error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
