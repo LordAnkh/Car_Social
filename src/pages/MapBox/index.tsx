@@ -310,18 +310,18 @@ export default function Homepage() {
   };
 
   return (
-    <div className="home">
+    <div className="mapbox-page">
       {user && (
         <button className="logout-button" onClick={handleLogout}>
           Logout
         </button>
       )}
 
-      <div className="home-title">
+      <div className="mapbox-title">
         <h1>Hello, {user?.name || user?.email || 'Guest'}!</h1>
       </div>
 
-      <div className="home-body">
+      <div className="mapbox-body">
         {loading && <p className="loading">Loading content...</p>}
         {error && <p className="error">{error}</p>}
 
