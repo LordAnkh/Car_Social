@@ -9,7 +9,7 @@ const BottomNav: React.FC = () => {
     <nav className="bottom-nav">
       <button onClick={() => navigate('/home')}>Home</button>
       <button onClick={() => window.location.href = '/tracker.html'}>Tracker</button>
-      <button onClick={() => navigate('/')}>Profile</button>
+      <button onClick={() => navigate('/friends')}>Friends</button>
     </nav>
   );
 };

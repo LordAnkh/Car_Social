@@ -1,0 +1,367 @@
+/* ========================================
+   Layout & Page
+   ======================================== */
+
+.friends-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  padding-bottom: 100px;
+  position: relative;
+}
+
+.friends-title {
+  background: rgb(255, 255, 255);
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.friends-title h1 {
+  color: #000000;
+  margin: 0;
+  font-size: 28px;
+}
+
+.friends-body {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ========================================
+   Visibility Toggle
+   ======================================== */
+
+.visibility-toggle-card {
+  background: white;
+  padding: 16px 20px;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  margin-bottom: 20px;
+}
+
+.visibility-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.visibility-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.visibility-label {
+  margin: 0;
+  font-weight: 700;
+  font-size: 15px;
+  color: #333;
+}
+
+.visibility-desc {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
+}
+
+.toggle-btn {
+  position: relative;
+  width: 52px;
+  height: 28px;
+  border-radius: 14px;
+  border: none;
+  background: #ccc;
+  cursor: pointer;
+  transition: background 0.3s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.toggle-btn.toggle-active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s;
+}
+
+.toggle-btn.toggle-active .toggle-knob {
+  transform: translateX(24px);
+}
+
+.visibility-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.visibility-labels span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ccc;
+  transition: color 0.2s;
+}
+
+.visibility-labels span.vis-active {
+  color: #667eea;
+}
+
+/* ========================================
+   Search
+   ======================================== */
+
+.search-container {
+  margin-bottom: 20px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 25px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.search-input:focus {
+  border-color: #667eea;
+}
+
+.search-results {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.search-hint {
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  padding: 10px 0;
+}
+
+/* ========================================
+   Section Headers
+   ======================================== */
+
+.section-header {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+  margin: 20px 0 12px 0;
+  padding-left: 12px;
+  border-left: 4px solid #667eea;
+}
+
+.section-header:first-of-type {
+  margin-top: 0;
+}
+
+/* ========================================
+   User Cards (search results, requests, friends)
+   ======================================== */
+
+.user-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.user-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.12);
+}
+
+.user-card-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.user-card-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.user-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.user-card-name {
+  margin: 0;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.user-card-email {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ========================================
+   Action Buttons
+   ======================================== */
+
+.user-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+.btn-add {
+  padding: 6px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-add:hover {
+  transform: translateY(-1px);
+}
+
+.btn-pending {
+  padding: 6px 16px;
+  background: #e0e0e0;
+  color: #666;
+  border: none;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: default;
+}
+
+.btn-friends {
+  padding: 6px 16px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: default;
+}
+
+.btn-accept {
+  padding: 6px 16px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-accept:hover {
+  transform: translateY(-1px);
+}
+
+.btn-reject {
+  padding: 6px 16px;
+  background: white;
+  color: #c33;
+  border: 1px solid #c33;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-reject:hover {
+  transform: translateY(-1px);
+}
+
+.btn-remove {
+  padding: 6px 16px;
+  background: white;
+  color: #c33;
+  border: 1px solid #c33;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-remove:hover {
+  background: #c33;
+  color: white;
+}
+
+/* ========================================
+   States
+   ======================================== */
+
+.friends-loading,
+.friends-empty {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+  font-size: 14px;
+}
+
+.friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}

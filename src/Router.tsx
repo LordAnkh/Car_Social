@@ -4,7 +4,7 @@ import Homepage from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import MapBox from "./pages/MapBox";
-
+import Friends from "./pages/Friends";
 import { AuthProvider } from "./context/AuthContext";
 //import InformationCenter from "./Tracker.js";
 //import Financial from "./Financial.js";
@@ -17,6 +17,7 @@ return (
       <Route path="/home" element={<Homepage/>} />
       <Route path="/signup" element={<Signup/>} />
       <Route path="/mapbox" element={<MapBox/>} />
+      <Route path="/friends" element={<Friends/>} />
 </Routes>
 </AuthProvider>
 )

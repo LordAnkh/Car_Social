@@ -100,13 +100,33 @@ export interface GetTripsResponse {
   datasets: Trip[];
 }
 
+const getToken = () => localStorage.getItem('token');
+
+const authHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = getToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
+export type FeedVisibility = 'public' | 'friends';
+
+export const getVisibility = (): FeedVisibility => {
+  return (localStorage.getItem('feedVisibility') as FeedVisibility) || 'public';
+};
+
+export const setVisibility = (v: FeedVisibility) => {
+  localStorage.setItem('feedVisibility', v);
+};
+
 export const tripService = {
   getAllTrips: async (): Promise<GetTripsResponse> => {
-    const response = await fetch(`${API_BASE}/trips`, {
+    const visibility = getVisibility();
+    const response = await fetch(`${API_BASE}/trips?visibility=${visibility}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders(),
     });
 
     if (!response.ok) {
@@ -144,5 +164,130 @@ export const tripService = {
     }
 
     return response.json();
+  },
+};
+
+// ===== Friends System =====
+
+export interface UserSearchResult {
+  _id: string;
+  name?: string;
+  email: string;
+  friendStatus: 'accepted' | 'pending_sent' | 'pending_received' | null;
+}
+
+export interface FriendRequest {
+  _id: string;
+  senderId: string;
+  senderName?: string;
+  senderEmail: string;
+  receiverId: string;
+  receiverName?: string;
+  receiverEmail: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
+}
+
+export interface Friend {
+  id: string;
+  name?: string;
+  email: string;
+}
+
+export const friendService = {
+  searchUsers: async (query: string): Promise<{ users: UserSearchResult[] }> => {
+    const response = await fetch(`${API_BASE}/users/search?q=${encodeURIComponent(query)}`, {
+      method: 'GET',
+      headers: authHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to search users');
+    }
+
+    return response.json();
+  },
+
+  sendRequest: async (receiverId: string): Promise<{ message: string }> => {
+    const response = await fetch(`${API_BASE}/friends/request`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ receiverId }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to send friend request');
+    }
+
+    return data;
+  },
+
+  getIncomingRequests: async (): Promise<{ requests: FriendRequest[] }> => {
+    const response = await fetch(`${API_BASE}/friends/requests`, {
+      method: 'GET',
+      headers: authHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch friend requests');
+    }
+
+    return response.json();
+  },
+
+  acceptRequest: async (requestId: string): Promise<{ message: string }> => {
+    const response = await fetch(`${API_BASE}/friends/request/${requestId}/accept`, {
+      method: 'PUT',
+      headers: authHeaders(),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to accept request');
+    }
+
+    return data;
+  },
+
+  rejectRequest: async (requestId: string): Promise<{ message: string }> => {
+    const response = await fetch(`${API_BASE}/friends/request/${requestId}/reject`, {
+      method: 'PUT',
+      headers: authHeaders(),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to reject request');
+    }
+
+    return data;
+  },
+
+  getFriends: async (): Promise<{ friends: Friend[] }> => {
+    const response = await fetch(`${API_BASE}/friends`, {
+      method: 'GET',
+      headers: authHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch friends');
+    }
+
+    return response.json();
+  },
+
+  removeFriend: async (friendId: string): Promise<{ message: string }> => {
+    const response = await fetch(`${API_BASE}/friends/${friendId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to remove friend');
+    }
+
+    return data;
   },
 };

@@ -484,14 +484,47 @@ app.post('/api/trips', authenticateAPIKeyOrToken, async (req, res) => {
   }
 });
 
-// Get all trips (exclude gpsPoints to keep response small)
+// Get all trips (filtered by friends if authenticated and visibility=friends)
 app.get('/api/trips', async (req, res) => {
   try {
     const db = client.db('Car_Database');
     const trips = db.collection('trips');
 
+    let filter = {};
+    const { visibility } = req.query; // 'public' or 'friends'
+
+    // Only apply friend filter when visibility is 'friends' and token is present
+    const authHeader = req.headers['authorization'];
+    if (visibility === 'friends' && authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+
+        const friendDocs = await db.collection('friend_requests').find({
+          $or: [
+            { senderId: decoded.userId, status: 'accepted' },
+            { receiverId: decoded.userId, status: 'accepted' }
+          ]
+        }).toArray();
+
+        const friendIds = friendDocs.map(f =>
+          f.senderId === decoded.userId ? f.receiverId : f.senderId
+        );
+
+        filter = {
+          $or: [
+            { userId: 'anonymous' },
+            { userId: decoded.userId },
+            { userId: { $in: friendIds } }
+          ]
+        };
+      } catch (e) {
+        // Invalid token, show all trips
+      }
+    }
+
     const allTrips = await trips
-      .find({}, { projection: { gpsPoints: 0 } })
+      .find(filter, { projection: { gpsPoints: 0 } })
       .sort({ createdAt: -1 })
       .limit(10)
       .toArray();
@@ -555,6 +588,248 @@ app.get('/api/trips/:id/photos', async (req, res) => {
     res.json({ photos: photosWithSas });
   } catch (error) {
     console.error('Fetch trip photos error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ===== FRIENDS SYSTEM =====
+
+// Search users by name or email
+app.get('/api/users/search', authenticateToken, async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const users = db.collection('user_credentals');
+    const friendRequests = db.collection('friend_requests');
+    const { q } = req.query;
+
+    if (!q || q.trim().length < 2) {
+      return res.json({ users: [] });
+    }
+
+    const regex = new RegExp(q.trim(), 'i');
+    const results = await users
+      .find(
+        {
+          _id: { $ne: new ObjectId(req.user.userId) },
+          $or: [{ name: regex }, { email: regex }]
+        },
+        { projection: { password: 0 } }
+      )
+      .limit(20)
+      .toArray();
+
+    // Look up existing friend requests between current user and results
+    const userIds = results.map(u => u._id.toString());
+    const existingRequests = await friendRequests.find({
+      $or: [
+        { senderId: req.user.userId, receiverId: { $in: userIds } },
+        { receiverId: req.user.userId, senderId: { $in: userIds } }
+      ],
+      status: { $in: ['pending', 'accepted'] }
+    }).toArray();
+
+    const enriched = results.map(u => {
+      const uid = u._id.toString();
+      const existing = existingRequests.find(r =>
+        (r.senderId === req.user.userId && r.receiverId === uid) ||
+        (r.receiverId === req.user.userId && r.senderId === uid)
+      );
+      let friendStatus = null;
+      if (existing) {
+        if (existing.status === 'accepted') friendStatus = 'accepted';
+        else if (existing.senderId === req.user.userId) friendStatus = 'pending_sent';
+        else friendStatus = 'pending_received';
+      }
+      return { _id: uid, name: u.name, email: u.email, friendStatus };
+    });
+
+    res.json({ users: enriched });
+  } catch (error) {
+    console.error('User search error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Send a friend request
+app.post('/api/friends/request', authenticateToken, async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const users = db.collection('user_credentals');
+    const friendRequests = db.collection('friend_requests');
+    const { receiverId } = req.body;
+
+    if (!receiverId) {
+      return res.status(400).json({ message: 'receiverId is required' });
+    }
+
+    if (receiverId === req.user.userId) {
+      return res.status(400).json({ message: 'Cannot send friend request to yourself' });
+    }
+
+    // Check receiver exists
+    const receiver = await users.findOne({ _id: new ObjectId(receiverId) });
+    if (!receiver) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check for existing request
+    const existing = await friendRequests.findOne({
+      $or: [
+        { senderId: req.user.userId, receiverId, status: { $in: ['pending', 'accepted'] } },
+        { senderId: receiverId, receiverId: req.user.userId, status: { $in: ['pending', 'accepted'] } }
+      ]
+    });
+    if (existing) {
+      return res.status(400).json({ message: 'Friend request already exists' });
+    }
+
+    // Look up sender info
+    const sender = await users.findOne({ _id: new ObjectId(req.user.userId) });
+
+    const request = {
+      senderId: req.user.userId,
+      senderName: sender?.name || null,
+      senderEmail: sender?.email || req.user.email,
+      receiverId,
+      receiverName: receiver.name || null,
+      receiverEmail: receiver.email,
+      status: 'pending',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    await friendRequests.insertOne(request);
+    res.status(201).json({ message: 'Friend request sent' });
+  } catch (error) {
+    console.error('Send friend request error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get incoming pending friend requests
+app.get('/api/friends/requests', authenticateToken, async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const friendRequests = db.collection('friend_requests');
+
+    const requests = await friendRequests
+      .find({ receiverId: req.user.userId, status: 'pending' })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.json({ requests });
+  } catch (error) {
+    console.error('Get friend requests error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Accept a friend request
+app.put('/api/friends/request/:id/accept', authenticateToken, async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const friendRequests = db.collection('friend_requests');
+
+    const request = await friendRequests.findOne({ _id: new ObjectId(req.params.id) });
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+    if (request.receiverId !== req.user.userId) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    if (request.status !== 'pending') {
+      return res.status(400).json({ message: 'Request already handled' });
+    }
+
+    await friendRequests.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { status: 'accepted', updatedAt: new Date() } }
+    );
+
+    res.json({ message: 'Friend request accepted' });
+  } catch (error) {
+    console.error('Accept friend request error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Reject a friend request
+app.put('/api/friends/request/:id/reject', authenticateToken, async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const friendRequests = db.collection('friend_requests');
+
+    const request = await friendRequests.findOne({ _id: new ObjectId(req.params.id) });
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+    if (request.receiverId !== req.user.userId) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    if (request.status !== 'pending') {
+      return res.status(400).json({ message: 'Request already handled' });
+    }
+
+    await friendRequests.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { status: 'rejected', updatedAt: new Date() } }
+    );
+
+    res.json({ message: 'Friend request rejected' });
+  } catch (error) {
+    console.error('Reject friend request error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get friends list
+app.get('/api/friends', authenticateToken, async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const friendRequests = db.collection('friend_requests');
+
+    const friendDocs = await friendRequests.find({
+      $or: [
+        { senderId: req.user.userId, status: 'accepted' },
+        { receiverId: req.user.userId, status: 'accepted' }
+      ]
+    }).toArray();
+
+    const friends = friendDocs.map(doc => {
+      if (doc.senderId === req.user.userId) {
+        return { id: doc.receiverId, name: doc.receiverName, email: doc.receiverEmail };
+      }
+      return { id: doc.senderId, name: doc.senderName, email: doc.senderEmail };
+    });
+
+    res.json({ friends });
+  } catch (error) {
+    console.error('Get friends error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Remove a friend
+app.delete('/api/friends/:friendId', authenticateToken, async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const friendRequests = db.collection('friend_requests');
+    const { friendId } = req.params;
+
+    const result = await friendRequests.deleteOne({
+      $or: [
+        { senderId: req.user.userId, receiverId: friendId, status: 'accepted' },
+        { senderId: friendId, receiverId: req.user.userId, status: 'accepted' }
+      ]
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: 'Friendship not found' });
+    }
+
+    res.json({ message: 'Friend removed' });
+  } catch (error) {
+    console.error('Remove friend error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
