@@ -518,17 +518,15 @@ app.get('/api/trips', async (req, res) => {
 
     // Build filter based on visibility toggle
     const { visibility } = req.query;
-    let allowedUserIds;
+    let filter;
 
     if (visibility === 'friends') {
-      // Friends-only: show only friends' posts + own
-      allowedUserIds = [...friendIds, decoded.userId];
+      // Friends-only: show only friends' posts + own (no anonymous)
+      filter = { userId: { $in: [...friendIds, decoded.userId] } };
     } else {
-      // Public: show own + friends' posts (no strangers)
-      allowedUserIds = [...friendIds, decoded.userId];
+      // Public: show own + friends' + anonymous posts
+      filter = { userId: { $in: [...friendIds, decoded.userId, 'anonymous'] } };
     }
-
-    const filter = { userId: { $in: allowedUserIds } };
 
     const allTrips = await trips
       .find(filter, { projection: { gpsPoints: 0 } })
