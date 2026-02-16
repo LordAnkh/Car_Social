@@ -181,6 +181,11 @@ export default function Homepage() {
     setCurrentPhotoIndex(prev => ({ ...prev, [tripId]: prevIndex }));
   };
 
+  const handleHideTrip = (tripId: string) => {
+    setFeedItems(prev => prev.filter(item => item.data._id !== tripId));
+    setOpenMenu(null);
+  };
+
   const handleDeleteTrip = async (tripId: string) => {
     if (!window.confirm('Are you sure you want to delete this trip? This cannot be undone.')) return;
     try {
@@ -235,31 +240,26 @@ export default function Homepage() {
               <p className="post-time">{formatDate(trip.createdAt)}</p>
             </div>
           </div>
-          {user && user.id === trip.userId ? (
-            <div className="post-settings-wrapper">
-              <button
-                className="post-settings-btn"
-                onClick={() => setOpenMenu(openMenu === trip._id ? null : trip._id)}
-              >
-                ⋮
-              </button>
-              {openMenu === trip._id && (
-                <div className="post-settings-menu">
-                  <button onClick={() => handleEditTrip(trip)}>Edit Post</button>
-                  <button className="delete-option" onClick={() => handleDeleteTrip(trip._id)}>Delete Post</button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="dataset-badge">
-              <span className="badge-text">
-                📸 {trip.photoCount} {trip.photoCount === 1 ? 'Photo' : 'Photos'}
-              </span>
-              <span className="badge-text">
-                📊 {trip.totalPoints} GPS Points
-              </span>
-            </div>
-          )}
+          <div className="post-settings-wrapper">
+            <button
+              className="post-settings-btn"
+              onClick={() => setOpenMenu(openMenu === trip._id ? null : trip._id)}
+            >
+              ⋮
+            </button>
+            {openMenu === trip._id && (
+              <div className="post-settings-menu">
+                {user && user.id === trip.userId ? (
+                  <>
+                    <button onClick={() => handleEditTrip(trip)}>Edit Post</button>
+                    <button className="delete-option" onClick={() => handleDeleteTrip(trip._id)}>Delete Post</button>
+                  </>
+                ) : (
+                  <button onClick={() => handleHideTrip(trip._id)}>Hide Post</button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="dataset-carousel">
