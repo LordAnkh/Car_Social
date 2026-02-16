@@ -165,6 +165,35 @@ export const tripService = {
 
     return response.json();
   },
+
+  deleteTrip: async (tripId: string): Promise<{ message: string }> => {
+    const response = await fetch(`${API_BASE}/trips/${tripId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to delete trip');
+    }
+
+    return data;
+  },
+
+  updateTrip: async (tripId: string, updates: { title?: string; description?: string }): Promise<{ message: string }> => {
+    const response = await fetch(`${API_BASE}/trips/${tripId}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(updates),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to update trip');
+    }
+
+    return data;
+  },
 };
 
 // ===== Friends System =====

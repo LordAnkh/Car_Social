@@ -106,7 +106,7 @@ app.post('/api/login', async (req, res) => {
     res.json({
       token,
       user: {
-        id: user._id,
+        id: user._id.toString(),
         email: user.email,
         name: user.name,
       }
@@ -484,40 +484,51 @@ app.post('/api/trips', authenticateAPIKeyOrToken, async (req, res) => {
   }
 });
 
-// Get all trips (filtered by friends if authenticated and visibility=friends)
+// Get all trips - only show own + friends' posts (guests see nothing)
 app.get('/api/trips', async (req, res) => {
   try {
     const db = client.db('Car_Database');
     const trips = db.collection('trips');
 
-    let filter = {};
-    const { visibility } = req.query; // 'public' or 'friends'
-
-    // Only apply friend filter when visibility is 'friends' and token is present
     const authHeader = req.headers['authorization'];
-    if (visibility === 'friends' && authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-
-        const friendDocs = await db.collection('friend_requests').find({
-          $or: [
-            { senderId: decoded.userId, status: 'accepted' },
-            { receiverId: decoded.userId, status: 'accepted' }
-          ]
-        }).toArray();
-
-        const friendIds = friendDocs.map(f =>
-          f.senderId === decoded.userId ? f.receiverId : f.senderId
-        );
-
-        // Only show friends' posts (and own posts)
-        friendIds.push(decoded.userId);
-        filter = { userId: { $in: friendIds } };
-      } catch (e) {
-        // Invalid token, show all trips
-      }
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      // Not authenticated - no posts visible
+      return res.json({ datasets: [] });
     }
+
+    let decoded;
+    try {
+      const token = authHeader.split(' ')[1];
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    } catch (e) {
+      return res.json({ datasets: [] });
+    }
+
+    // Get friend list
+    const friendDocs = await db.collection('friend_requests').find({
+      $or: [
+        { senderId: decoded.userId, status: 'accepted' },
+        { receiverId: decoded.userId, status: 'accepted' }
+      ]
+    }).toArray();
+
+    const friendIds = friendDocs.map(f =>
+      f.senderId === decoded.userId ? f.receiverId : f.senderId
+    );
+
+    // Build filter based on visibility toggle
+    const { visibility } = req.query;
+    let allowedUserIds;
+
+    if (visibility === 'friends') {
+      // Friends-only: show only friends' posts + own
+      allowedUserIds = [...friendIds, decoded.userId];
+    } else {
+      // Public: show own + friends' posts (no strangers)
+      allowedUserIds = [...friendIds, decoded.userId];
+    }
+
+    const filter = { userId: { $in: allowedUserIds } };
 
     const allTrips = await trips
       .find(filter, { projection: { gpsPoints: 0 } })
@@ -584,6 +595,78 @@ app.get('/api/trips/:id/photos', async (req, res) => {
     res.json({ photos: photosWithSas });
   } catch (error) {
     console.error('Fetch trip photos error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete a trip (owner only)
+app.delete('/api/trips/:id', authenticateToken, async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const trips = db.collection('trips');
+    const photosCollection = db.collection('photos');
+
+    const trip = await trips.findOne({ _id: new ObjectId(req.params.id) });
+    if (!trip) {
+      return res.status(404).json({ message: 'Trip not found' });
+    }
+
+    if (trip.userId !== req.user.userId) {
+      return res.status(403).json({ message: 'You can only delete your own trips' });
+    }
+
+    // Delete photos from Azure Blob Storage
+    if (trip.photoKeys && trip.photoKeys.length > 0) {
+      for (const key of trip.photoKeys) {
+        try {
+          const blobClient = containerClient.getBlobClient(key);
+          await blobClient.deleteIfExists();
+        } catch (err) {
+          console.error(`Failed to delete blob ${key}:`, err);
+        }
+      }
+      // Delete photo metadata from photos collection
+      await photosCollection.deleteMany({ photoKey: { $in: trip.photoKeys } });
+    }
+
+    // Delete the trip document
+    await trips.deleteOne({ _id: new ObjectId(req.params.id) });
+
+    res.json({ message: 'Trip deleted successfully' });
+  } catch (error) {
+    console.error('Delete trip error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update a trip (owner only) - title and description
+app.put('/api/trips/:id', authenticateToken, async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const trips = db.collection('trips');
+
+    const trip = await trips.findOne({ _id: new ObjectId(req.params.id) });
+    if (!trip) {
+      return res.status(404).json({ message: 'Trip not found' });
+    }
+
+    if (trip.userId !== req.user.userId) {
+      return res.status(403).json({ message: 'You can only edit your own trips' });
+    }
+
+    const { title, description } = req.body;
+    const update = {};
+    if (title !== undefined) update.title = title;
+    if (description !== undefined) update.description = description;
+
+    await trips.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: update }
+    );
+
+    res.json({ message: 'Trip updated successfully' });
+  } catch (error) {
+    console.error('Update trip error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

@@ -83,6 +83,8 @@ export default function Homepage() {
   const [loadingPhotos, setLoadingPhotos] = useState<{ [key: string]: boolean }>({});
   const [loadedPoints, setLoadedPoints] = useState<{ [key: string]: GpsPoint[] }>({});
   const [loadingPoints, setLoadingPoints] = useState<{ [key: string]: boolean }>({});
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [editingTrip, setEditingTrip] = useState<{ id: string; title: string; description: string } | null>(null);
 
   useEffect(() => {
     fetchAllContent();
@@ -179,6 +181,40 @@ export default function Homepage() {
     setCurrentPhotoIndex(prev => ({ ...prev, [tripId]: prevIndex }));
   };
 
+  const handleDeleteTrip = async (tripId: string) => {
+    if (!window.confirm('Are you sure you want to delete this trip? This cannot be undone.')) return;
+    try {
+      await tripService.deleteTrip(tripId);
+      setFeedItems(prev => prev.filter(item => item.data._id !== tripId));
+      setOpenMenu(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete trip');
+    }
+  };
+
+  const handleEditTrip = (trip: Trip) => {
+    setEditingTrip({ id: trip._id, title: trip.title || '', description: trip.description || '' });
+    setOpenMenu(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingTrip) return;
+    try {
+      await tripService.updateTrip(editingTrip.id, {
+        title: editingTrip.title,
+        description: editingTrip.description,
+      });
+      setFeedItems(prev => prev.map(item =>
+        item.data._id === editingTrip.id
+          ? { ...item, data: { ...item.data, title: editingTrip.title, description: editingTrip.description } }
+          : item
+      ));
+      setEditingTrip(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update trip');
+    }
+  };
+
   const renderTrip = (trip: Trip) => {
     const slideIndex = currentPhotoIndex[trip._id] || 0;
     const totalSlides = trip.photoCount + 1; // +1 for map slide
@@ -199,14 +235,31 @@ export default function Homepage() {
               <p className="post-time">{formatDate(trip.createdAt)}</p>
             </div>
           </div>
-          <div className="dataset-badge">
-            <span className="badge-text">
-              📸 {trip.photoCount} {trip.photoCount === 1 ? 'Photo' : 'Photos'}
-            </span>
-            <span className="badge-text">
-              📊 {trip.totalPoints} GPS Points
-            </span>
-          </div>
+          {user && user.id === trip.userId ? (
+            <div className="post-settings-wrapper">
+              <button
+                className="post-settings-btn"
+                onClick={() => setOpenMenu(openMenu === trip._id ? null : trip._id)}
+              >
+                ⋮
+              </button>
+              {openMenu === trip._id && (
+                <div className="post-settings-menu">
+                  <button onClick={() => handleEditTrip(trip)}>Edit Post</button>
+                  <button className="delete-option" onClick={() => handleDeleteTrip(trip._id)}>Delete Post</button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="dataset-badge">
+              <span className="badge-text">
+                📸 {trip.photoCount} {trip.photoCount === 1 ? 'Photo' : 'Photos'}
+              </span>
+              <span className="badge-text">
+                📊 {trip.totalPoints} GPS Points
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="dataset-carousel">
@@ -332,6 +385,32 @@ export default function Homepage() {
           return null;
         })}
       </div>
+
+      {editingTrip && (
+        <div className="edit-modal-overlay" onClick={() => setEditingTrip(null)}>
+          <div className="edit-modal" onClick={e => e.stopPropagation()}>
+            <h3>Edit Trip</h3>
+            <label>Title</label>
+            <input
+              type="text"
+              value={editingTrip.title}
+              onChange={e => setEditingTrip({ ...editingTrip, title: e.target.value })}
+              placeholder="Trip title"
+            />
+            <label>Description</label>
+            <textarea
+              value={editingTrip.description}
+              onChange={e => setEditingTrip({ ...editingTrip, description: e.target.value })}
+              placeholder="Trip description"
+              rows={4}
+            />
+            <div className="edit-modal-buttons">
+              <button className="edit-modal-cancel" onClick={() => setEditingTrip(null)}>Cancel</button>
+              <button className="edit-modal-save" onClick={handleSaveEdit}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <BottomNav />
     </div>

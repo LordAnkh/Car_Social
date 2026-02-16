@@ -184,6 +184,161 @@
 }
 
 /* ========================================
+   Post Settings Button
+   ======================================== */
+
+.post-settings-wrapper {
+  position: relative;
+}
+
+.post-settings-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: #666;
+  padding: 4px 8px;
+  border-radius: 50%;
+  transition: background 0.2s;
+  line-height: 1;
+}
+
+.post-settings-btn:hover {
+  background: #f0f0f0;
+}
+
+.post-settings-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  overflow: hidden;
+  min-width: 140px;
+}
+
+.post-settings-menu button {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+  color: #333;
+}
+
+.post-settings-menu button:hover {
+  background: #f5f5f5;
+}
+
+.post-settings-menu .delete-option {
+  color: #c33;
+}
+
+.post-settings-menu .delete-option:hover {
+  background: #fee;
+}
+
+/* ========================================
+   Edit Modal
+   ======================================== */
+
+.edit-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.edit-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+}
+
+.edit-modal h3 {
+  margin: 0 0 16px 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.edit-modal label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.edit-modal input,
+.edit-modal textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.edit-modal input:focus,
+.edit-modal textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.edit-modal-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.edit-modal-cancel {
+  padding: 8px 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.edit-modal-cancel:hover {
+  background: #f5f5f5;
+}
+
+.edit-modal-save {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #333;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.edit-modal-save:hover {
+  background: #555;
+}
+
+/* ========================================
    GPS Dataset Card
    ======================================== */
 
