@@ -413,24 +413,6 @@
 
       <div class="setting-row">
         <div>
-          <div class="label">Server URL</div>
-          <div class="sublabel">Your backend API endpoint</div>
-        </div>
-      </div>
-      <div class="setting-row" style="padding: 8px 16px;">
-        <input type="url" id="serverUrl" placeholder="http://192.168.1.100:3000" style="width: 100%; text-align: left;" value="">
-      </div>
-
-      <div class="setting-row">
-        <div>
-          <div class="label">API Key</div>
-          <div class="sublabel">Must match your server</div>
-        </div>
-        <input type="text" id="apiKey" placeholder="your-secret-key" value="">
-      </div>
-
-      <div class="setting-row">
-        <div>
           <div class="label">Update Interval</div>
           <div class="sublabel">Seconds between GPS reads</div>
         </div>
@@ -461,19 +443,11 @@
   let offlineBuffer = [];
   let logEntries = [];
 
-  // Load saved settings
-  const savedUrl = localStorage.getItem('serverUrl') || '';
-  const savedKey = localStorage.getItem('apiKey') || '';
-  document.getElementById('serverUrl').value = savedUrl;
-  document.getElementById('apiKey').value = savedKey;
-
-  // Save settings on change
-  document.getElementById('serverUrl').addEventListener('change', (e) => {
-    localStorage.setItem('serverUrl', e.target.value);
-  });
-  document.getElementById('apiKey').addEventListener('change', (e) => {
-    localStorage.setItem('apiKey', e.target.value);
-  });
+  // Hardcoded server config
+  const SERVER_URL = window.location.hostname === 'localhost'
+    ? 'http://localhost:5000'
+    : 'https://az318test.uk';
+  const API_KEY = 'your-location-key';
 
   // Load offline buffer from localStorage
   try {
@@ -558,11 +532,7 @@
       return;
     }
 
-    const serverUrl = document.getElementById('serverUrl').value.trim();
-    if (!serverUrl) {
-      showMessage('Set your server URL first', 'error');
-      return;
-    }
+    const serverUrl = SERVER_URL;
 
     isTracking = true;
     setStatus(true);
@@ -630,15 +600,12 @@
   }
 
   async function sendToServer(data) {
-    const serverUrl = document.getElementById('serverUrl').value.trim();
-    const apiKey = document.getElementById('apiKey').value.trim();
-
     try {
-      const response = await fetch(`${serverUrl}/api/location`, {
+      const response = await fetch(`${SERVER_URL}/api/location`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': apiKey
+          'X-API-Key': API_KEY
         },
         body: JSON.stringify(data)
       });
@@ -664,16 +631,14 @@
   async function flushBuffer() {
     if (offlineBuffer.length === 0) return;
 
-    const serverUrl = document.getElementById('serverUrl').value.trim();
-    const apiKey = document.getElementById('apiKey').value.trim();
     const toSend = [...offlineBuffer];
 
     try {
-      const response = await fetch(`${serverUrl}/api/locations/batch`, {
+      const response = await fetch(`${SERVER_URL}/api/locations/batch`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': apiKey
+          'X-API-Key': API_KEY
         },
         body: JSON.stringify({ locations: toSend })
       });

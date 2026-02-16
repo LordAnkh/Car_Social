@@ -616,24 +616,6 @@
 
       <div class="setting-row">
         <div>
-          <div class="label">Server URL</div>
-          <div class="sublabel">Your backend API endpoint</div>
-        </div>
-      </div>
-      <div class="setting-row" style="padding: 8px 16px;">
-        <input type="url" id="serverUrl" placeholder="http://192.168.1.100:3000" style="width: 100%; text-align: left;" value="">
-      </div>
-
-      <div class="setting-row">
-        <div>
-          <div class="label">API Key</div>
-          <div class="sublabel">Must match your server</div>
-        </div>
-        <input type="text" id="apiKey" placeholder="your-secret-key" value="">
-      </div>
-
-      <div class="setting-row">
-        <div>
           <div class="label">Update Interval</div>
           <div class="sublabel">Seconds between GPS reads</div>
         </div>
@@ -682,32 +664,9 @@
     }
   } catch (e) {}
 
-  // Auto-configure server URL and API key
-  const defaultServerUrl = window.location.origin; // Automatically use current domain
-  const defaultApiKey = 'car-tracker-2024'; // Match the API key from .env
-
-  // Load saved settings or use defaults
-  const savedUrl = localStorage.getItem('serverUrl') || defaultServerUrl;
-  const savedKey = localStorage.getItem('apiKey') || defaultApiKey;
-
-  document.getElementById('serverUrl').value = savedUrl;
-  document.getElementById('apiKey').value = savedKey;
-
-  // Auto-save the defaults if not already saved
-  if (!localStorage.getItem('serverUrl')) {
-    localStorage.setItem('serverUrl', defaultServerUrl);
-  }
-  if (!localStorage.getItem('apiKey')) {
-    localStorage.setItem('apiKey', defaultApiKey);
-  }
-
-  // Save settings on change
-  document.getElementById('serverUrl').addEventListener('change', (e) => {
-    localStorage.setItem('serverUrl', e.target.value);
-  });
-  document.getElementById('apiKey').addEventListener('change', (e) => {
-    localStorage.setItem('apiKey', e.target.value);
-  });
+  // Hardcoded server config
+  const SERVER_URL = window.location.origin;
+  const API_KEY = 'car-tracker-2024';
 
   // Load offline buffer from localStorage
   try {
@@ -793,12 +752,6 @@
   function startTracking() {
     if (!navigator.geolocation) {
       showMessage('Geolocation not supported', 'error');
-      return;
-    }
-
-    const serverUrl = document.getElementById('serverUrl').value.trim();
-    if (!serverUrl) {
-      showMessage('Set your server URL first', 'error');
       return;
     }
 
@@ -896,15 +849,12 @@
   }
 
   async function sendToServer(data) {
-    const serverUrl = document.getElementById('serverUrl').value.trim();
-    const apiKey = document.getElementById('apiKey').value.trim();
-
     try {
-      const response = await fetch(`${serverUrl}/api/location`, {
+      const response = await fetch(`${SERVER_URL}/api/location`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': apiKey
+          'X-API-Key': API_KEY
         },
         body: JSON.stringify(data)
       });
@@ -930,16 +880,14 @@
   async function flushBuffer() {
     if (offlineBuffer.length === 0) return;
 
-    const serverUrl = document.getElementById('serverUrl').value.trim();
-    const apiKey = document.getElementById('apiKey').value.trim();
     const toSend = [...offlineBuffer];
 
     try {
-      const response = await fetch(`${serverUrl}/api/locations/batch`, {
+      const response = await fetch(`${SERVER_URL}/api/locations/batch`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': apiKey
+          'X-API-Key': API_KEY
         },
         body: JSON.stringify({ locations: toSend })
       });
@@ -1246,14 +1194,6 @@
       return;
     }
 
-    const serverUrl = document.getElementById('serverUrl').value.trim();
-    const apiKey = document.getElementById('apiKey').value.trim();
-
-    if (!serverUrl) {
-      showMessage('Set your server URL first', 'error');
-      return;
-    }
-
     try {
       // Build auth headers
       const authToken = localStorage.getItem('token');
@@ -1261,7 +1201,7 @@
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
       } else {
-        headers['X-API-Key'] = apiKey;
+        headers['X-API-Key'] = API_KEY;
       }
 
       // Step 1: Upload each photo to Azure via server
@@ -1273,7 +1213,7 @@
         const photo = capturedPhotos[i];
         addLog(`Uploading photo ${i + 1}/${capturedPhotos.length}...`);
 
-        const uploadRes = await fetch(`${serverUrl}/api/photos/upload`, {
+        const uploadRes = await fetch(`${SERVER_URL}/api/photos/upload`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
@@ -1309,7 +1249,7 @@
         description: description
       };
 
-      const response = await fetch(`${serverUrl}/api/trips`, {
+      const response = await fetch(`${SERVER_URL}/api/trips`, {
         method: 'POST',
         headers,
         body: JSON.stringify(trip)
