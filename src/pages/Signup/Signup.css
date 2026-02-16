@@ -3,7 +3,7 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #d2b48c;
 }
 
 .signup-card {
@@ -17,7 +17,7 @@
 
 .signup-card h1 {
   text-align: center;
-  color: #667eea;
+  color: #242424;
   margin-bottom: 10px;
   font-size: 24px;
 }
@@ -52,7 +52,7 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #1c1c1c;
 }
 
 .error-message {
@@ -76,7 +76,7 @@
 .signup-button {
   width: 100%;
   padding: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000000;
   color: white;
   border: none;
   border-radius: 5px;
@@ -96,7 +96,7 @@
 }
 
 .signup-footer a {
-  color: #667eea;
+  color: #2970e3;
   text-decoration: none;
 }
 

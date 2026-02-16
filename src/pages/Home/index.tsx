@@ -234,7 +234,13 @@ export default function Homepage() {
       <div key={trip._id} className="post-card dataset-card">
         <div className="post-header">
           <div className="post-user-info">
-            <div className="user-avatar dataset-avatar">📍</div>
+            {trip.userProfilePictureUrl ? (
+              <img className="user-avatar-img" src={trip.userProfilePictureUrl} alt="" />
+            ) : (
+              <div className="user-avatar dataset-avatar">
+                {(trip.userName || trip.userEmail || '?')[0].toUpperCase()}
+              </div>
+            )}
             <div className="user-details">
               <p className="user-name">{trip.title || 'GPS Tracking Session'}</p>
               <p className="post-time">{formatDate(trip.createdAt)}</p>
@@ -365,7 +371,8 @@ export default function Homepage() {
       )}
 
       <div className="home-title">
-        <h1>Hello, {user?.name || user?.email || 'Guest'}!</h1>
+        <h1>Cork Board</h1>
+        <p className="home-username">{user?.name || user?.email || 'Guest'}</p>
       </div>
 
       <div className="home-body">

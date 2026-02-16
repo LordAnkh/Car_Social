@@ -8,7 +8,7 @@
   min-height: 100vh;
   background: linear-gradient(180deg, #d2b48c 0%, #f5e6d3 100%);
   padding: 12px;
-  padding-bottom: 100px;
+  padding-left: 120px;
   position: relative;
 }
 
@@ -30,6 +30,12 @@
   font-size: 22px;
 }
 
+.home-username {
+  margin: 4px 0 0 0;
+  font-size: 14px;
+  color: #666;
+}
+
 .home-body {
   background: rgb(255, 255, 255);
   padding: 12px;
@@ -41,7 +47,7 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  height: 800px;
+  max-height: fit-content;
   width: 700px;
   align-self: center;
 }
@@ -62,9 +68,9 @@
   right: 20px;
   padding: 10px 20px;
   background: white;
-  color: #667eea;
-  border: 2px solid #667eea;
-  border-radius: 5px;
+  color: #000000;
+  
+  border-radius: 10px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
@@ -73,7 +79,7 @@
 }
 
 .logout-button:hover {
-  background: #667eea;
+  background: #4a8430;
   color: white;
   transform: translateY(-2px);
 }
@@ -119,10 +125,10 @@
   width: 100%;
 }
 
-.post-card:hover {
+/* .post-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-}
+} */
 
 /* Post Header */
 .post-header {
@@ -148,7 +154,14 @@
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 18px;
+  font-size: 14px;
+}
+
+.user-avatar-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .user-details {
@@ -167,7 +180,7 @@
 .post-time {
   margin: 0;
   font-size: 12px;
-  color: #999;
+  color: #373737;
 }
 
 /* Post Content */
@@ -214,7 +227,7 @@
   background: white;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
   z-index: 10;
   overflow: hidden;
   min-width: 140px;
@@ -299,7 +312,7 @@
 .edit-modal input:focus,
 .edit-modal textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #000000;
 }
 
 .edit-modal-buttons {
@@ -343,7 +356,7 @@
    ======================================== */
 
 .dataset-card {
-  border: 2px solid #667eea;
+  border: 1px solid #ffffff;
 }
 
 .dataset-avatar {
@@ -384,12 +397,12 @@
 }
 
 .map-indicator {
-  background: #667eea !important;
-  border: 2px solid #667eea !important;
+  background: #005b05 !important;
+  border: 2px solid #278300 !important;
 }
 
 .map-indicator.active {
-  background: #667eea !important;
+  background: #005b00 !important;
   transform: scale(1.3);
 }
 
@@ -402,7 +415,7 @@
   width: 500px;
   max-height: 500px;
   overflow: hidden;
-  background: #000;
+  background: #ffffff;
 }
 
 .carousel-image {
@@ -427,7 +440,7 @@
   position: absolute;
   bottom: 10px;
   left: 10px;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(99, 99, 99, 0.44);
   color: white;
   padding: 8px 12px;
   border-radius: 20px;
@@ -467,11 +480,11 @@
   justify-content: center;
   transition: all 0.2s;
   z-index: 2;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(96, 96, 96, 0.2);
 }
 
-.carousel-btn:hover {
-  background: rgb(0, 0, 0);
+ .carousel-btn:hover {
+  background: rgb(255, 255, 255);
   transform: translateY(-50%) scale(1.1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }

@@ -103,12 +103,19 @@ app.post('/api/login', async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    // Generate profile picture URL if user has one
+    let profilePictureUrl = null;
+    if (user.profilePictureKey) {
+      profilePictureUrl = generateSasUrl(user.profilePictureKey);
+    }
+
     res.json({
       token,
       user: {
         id: user._id.toString(),
         email: user.email,
         name: user.name,
+        profilePictureUrl,
       }
     });
 
@@ -534,7 +541,26 @@ app.get('/api/trips', async (req, res) => {
       .limit(10)
       .toArray();
 
-    res.json({ datasets: allTrips });
+    // Look up profile pictures for trip authors
+    const authorIds = [...new Set(allTrips.map(t => t.userId).filter(id => id !== 'anonymous'))];
+    const users = await db.collection('user_credentals').find(
+      { _id: { $in: authorIds.map(id => new ObjectId(id)) } },
+      { projection: { profilePictureKey: 1 } }
+    ).toArray();
+
+    const profilePicMap = {};
+    users.forEach(u => {
+      if (u.profilePictureKey) {
+        profilePicMap[u._id.toString()] = generateSasUrl(u.profilePictureKey);
+      }
+    });
+
+    const tripsWithPics = allTrips.map(t => ({
+      ...t,
+      userProfilePictureUrl: profilePicMap[t.userId] || null,
+    }));
+
+    res.json({ datasets: tripsWithPics });
   } catch (error) {
     console.error('Fetch trips error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -666,6 +692,38 @@ app.put('/api/trips/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Update trip error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Upload profile picture
+app.post('/api/profile/picture', authenticateToken, async (req, res) => {
+  try {
+    const { base64 } = req.body;
+    if (!base64) {
+      return res.status(400).json({ message: 'base64 image data is required' });
+    }
+
+    const photoKey = `profile-pictures/${req.user.userId}.jpg`;
+    const base64Data = base64.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const blockBlobClient = containerClient.getBlockBlobClient(photoKey);
+    await blockBlobClient.uploadData(buffer, {
+      blobHTTPHeaders: { blobContentType: 'image/jpeg' },
+    });
+
+    // Update user record
+    const db = client.db('Car_Database');
+    await db.collection('user_credentals').updateOne(
+      { _id: new ObjectId(req.user.userId) },
+      { $set: { profilePictureKey: photoKey } }
+    );
+
+    const profilePictureUrl = generateSasUrl(photoKey);
+    res.json({ message: 'Profile picture updated', profilePictureUrl });
+  } catch (error) {
+    console.error('Profile picture upload error:', error);
+    res.status(500).json({ message: 'Failed to upload profile picture' });
   }
 });
 

@@ -56,7 +56,7 @@ const Signup: React.FC = () => {
     <div className="signup-container">
       <div className="signup-card">
    
-        <h1>Cork Board</h1>
+        <h1>PinBoard</h1>
         <h2>Sign Up</h2>
         
         <form onSubmit={handleSubmit}>

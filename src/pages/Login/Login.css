@@ -3,7 +3,7 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: rgb(167, 143, 112)
+  background: #d2b48c;
 }
 
 .login-card {
@@ -17,7 +17,7 @@
 
 .login-card h1 {
   text-align: center;
-  color: #667eea;
+  color: ##333;
   margin-bottom: 10px;
   font-size: 24px;
 }
@@ -52,7 +52,7 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #192f95;
 }
 
 .error-message {
@@ -67,7 +67,7 @@
 .login-button{
   width: 100%;
   padding: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #333;
   color: white;
   border: none;
   border-radius: 5px;

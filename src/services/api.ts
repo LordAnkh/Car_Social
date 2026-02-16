@@ -94,6 +94,7 @@ export interface Trip {
   userEmail?: string;
   title: string;
   description: string;
+  userProfilePictureUrl?: string;
 }
 
 export interface GetTripsResponse {
@@ -315,6 +316,25 @@ export const friendService = {
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data.message || 'Failed to remove friend');
+    }
+
+    return data;
+  },
+};
+
+// ===== Profile Service =====
+
+export const profileService = {
+  uploadPicture: async (base64: string): Promise<{ message: string; profilePictureUrl: string }> => {
+    const response = await fetch(`${API_BASE}/profile/picture`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ base64 }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to upload profile picture');
     }
 
     return data;

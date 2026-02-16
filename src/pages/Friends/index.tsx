@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BottomNav from '../../components/BottomNav';
-import { friendService, UserSearchResult, FriendRequest, Friend, getVisibility, setVisibility, FeedVisibility } from '../../services/api';
+import { friendService, profileService, UserSearchResult, FriendRequest, Friend, getVisibility, setVisibility, FeedVisibility } from '../../services/api';
 import './Friends.css';
 
 export default function Friends() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPic, setUploadingPic] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -107,12 +109,32 @@ export default function Friends() {
     }
   };
 
+  const handleProfilePicChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPic(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        const res = await profileService.uploadPicture(base64);
+        updateUser({ profilePictureUrl: res.profilePictureUrl });
+        setUploadingPic(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Failed to upload profile picture:', err);
+      setUploadingPic(false);
+    }
+  };
+
   const handleToggleVisibility = () => {
     const next: FeedVisibility = visibility === 'public' ? 'friends' : 'public';
     setVis(next);
     setVisibility(next);
   };
-
+  
   const getInitial = (name?: string, email?: string) => {
     return (name || email || '?')[0].toUpperCase();
   };
@@ -183,6 +205,29 @@ export default function Friends() {
         <h1>Friends</h1>
       </div>
 
+      <div className="profile-pic-card">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleProfilePicChange}
+        />
+        <div className="profile-pic-row" onClick={() => fileInputRef.current?.click()}>
+          {user?.profilePictureUrl ? (
+            <img className="profile-pic-preview" src={user.profilePictureUrl} alt="Profile" />
+          ) : (
+            <div className="profile-pic-placeholder">
+              {(user?.name || user?.email || '?')[0].toUpperCase()}
+            </div>
+          )}
+          <div className="profile-pic-info">
+            <p className="profile-pic-name">{user?.name || user?.email || 'Guest'}</p>
+            <p className="profile-pic-hint">{uploadingPic ? 'Uploading...' : 'Tap to change profile picture'}</p>
+          </div>
+        </div>
+      </div>
+
       <div className="visibility-toggle-card">
         <div className="visibility-toggle-row">
           <div className="visibility-info">
@@ -248,7 +293,6 @@ export default function Friends() {
           </>
         )}
       </div>
-
       <BottomNav />
     </div>
   );

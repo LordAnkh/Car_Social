@@ -8,7 +8,7 @@
   min-height: 100vh;
   background: linear-gradient(180deg, #d2b48c 0%, #f5e6d3 100%);
   padding: 12px;
-  padding-bottom: 100px;
+  padding-left: 120px;
   position: relative;
 }
 .friends-title {
@@ -37,6 +37,67 @@
   flex: 1;
   overflow-y: auto;
   width: 450px;
+  align-self: center;
+}
+
+/* ========================================
+   Profile Picture
+   ======================================== */
+
+.profile-pic-card {
+  background: white;
+  padding: 16px 20px;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  margin-bottom: 20px;
+  width: 450px;
+  align-self: center;
+}
+
+.profile-pic-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+}
+
+.profile-pic-preview {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-pic-placeholder {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 22px;
+}
+
+.profile-pic-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-pic-name {
+  margin: 0;
+  font-weight: 700;
+  font-size: 16px;
+  color: #333;
+}
+
+.profile-pic-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
 }
 
 /* ========================================
@@ -51,9 +112,10 @@
   margin-bottom: 20px;
   height: 60px;
   width: 450px;
-  
+  align-self: center;
+   align-items: center;
+  justify-content: center;  
 }
-
 .visibility-toggle-row {
   display: flex;
   align-items: center;
@@ -138,6 +200,7 @@
 .search-container {
   margin-bottom: 20px;
  width: 430px ;
+
 }
 
 .search-input {
@@ -201,6 +264,8 @@
   transition: transform 0.2s, box-shadow 0.2s;
   width: 400px ;
   height: 20px;
+   align-items: center;
+  justify-content: center;  
 }
 
 .user-card:hover {
@@ -262,11 +327,13 @@
   gap: 8px;
   flex-shrink: 0;
   margin-left: 10px;
+  align-items: center;
+  justify-content: center;  
 }
 
 .btn-add {
   padding: 6px 16px;
-  background: linear-gradient(135deg, #ffffff 0%, #d2b48c 100%);
+  background: green;
   color: white;
   border: none;
   border-radius: 15px;
@@ -374,4 +441,82 @@
   flex-direction: column;
   gap: 8px;
   margin-bottom: 10px;
+}
+
+/* ========================================
+   Mobile (iPhone)
+   ======================================== */
+
+@media (max-width: 480px) {
+  .friends-page {
+    padding: 8px;
+    padding-bottom: 80px;
+  }
+
+  .friends-title {
+    width: 100%;
+    padding: 16px;
+    height: auto;
+    box-sizing: border-box;
+  }
+
+  .friends-title h1 {
+    font-size: 22px;
+  }
+
+  .profile-pic-card {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .visibility-toggle-card {
+    width: 100%;
+    height: auto;
+    box-sizing: border-box;
+  }
+
+  .friends-body {
+    width: 100%;
+    padding: 12px;
+    box-sizing: border-box;
+  }
+
+  .search-container {
+    width: 100%;
+  }
+
+  .user-card {
+    width: 100%;
+    height: auto;
+    box-sizing: border-box;
+    padding: 10px 12px;
+  }
+
+  .user-card-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .user-card-name {
+    font-size: 13px;
+  }
+
+  .user-card-email {
+    font-size: 11px;
+  }
+
+  .user-card-actions {
+    margin-left: 6px;
+  }
+
+  .btn-add,
+  .btn-pending,
+  .btn-friends,
+  .btn-accept,
+  .btn-reject,
+  .btn-remove {
+    padding: 5px 12px;
+    font-size: 11px;
+  }
 }
