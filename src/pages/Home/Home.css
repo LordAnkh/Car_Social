@@ -175,6 +175,14 @@
   padding: 10px;
 }
 
+.post-description {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
 /* ========================================
    GPS Dataset Card
    ======================================== */

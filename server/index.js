@@ -511,13 +511,9 @@ app.get('/api/trips', async (req, res) => {
           f.senderId === decoded.userId ? f.receiverId : f.senderId
         );
 
-        filter = {
-          $or: [
-            { userId: 'anonymous' },
-            { userId: decoded.userId },
-            { userId: { $in: friendIds } }
-          ]
-        };
+        // Only show friends' posts (and own posts)
+        friendIds.push(decoded.userId);
+        filter = { userId: { $in: friendIds } };
       } catch (e) {
         // Invalid token, show all trips
       }

@@ -1,0 +1,89 @@
+.landing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #d2b48c 0%, #f5e6d3 100%);
+  padding: 20px;
+}
+
+.landing-content {
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+}
+
+.landing-title {
+  font-size: 48px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 12px 0;
+}
+
+.landing-subtitle {
+  font-size: 18px;
+  color: #666;
+  margin: 0 0 40px 0;
+  line-height: 1.5;
+}
+
+.landing-buttons {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.landing-btn {
+  flex: 1;
+  padding: 14px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid #333;
+}
+
+.landing-btn-primary {
+  background: #333;
+  color: white;
+}
+
+.landing-btn-primary:hover {
+  background: #555;
+  border-color: #555;
+}
+
+.landing-btn-secondary {
+  background: white;
+  color: #333;
+}
+
+.landing-btn-secondary:hover {
+  background: #f0f0f0;
+}
+
+.landing-guest {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 8px;
+}
+
+.landing-guest:hover {
+  color: #666;
+}
+
+@media (max-width: 480px) {
+  .landing-title {
+    font-size: 36px;
+  }
+
+  .landing-subtitle {
+    font-size: 16px;
+    margin-bottom: 30px;
+  }
+}

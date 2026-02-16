@@ -267,6 +267,9 @@ export default function Homepage() {
         </div>
 
         <div className="post-content">
+          {trip.description && (
+            <p className="post-description">{trip.description}</p>
+          )}
           {isMapSlide ? (
             <p className="dataset-photo-info">
               🗺️ Route Map • {trip.totalPoints} GPS points tracked
@@ -298,9 +301,13 @@ export default function Homepage() {
 
   return (
     <div className="home">
-      {user && (
+      {user ? (
         <button className="logout-button" onClick={handleLogout}>
           Logout
+        </button>
+      ) : (
+        <button className="logout-button" onClick={() => navigate('/')}>
+          Login
         </button>
       )}
 

@@ -6,12 +6,11 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  background: linear-gradient(180deg, #d2b48c 0%, #f5e6d3 100%);
+  padding: 12px;
   padding-bottom: 100px;
   position: relative;
 }
-
 .friends-title {
   background: rgb(255, 255, 255);
   padding: 30px;
@@ -19,6 +18,9 @@
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   margin-bottom: 20px;
   text-align: center;
+  height: 30px;
+  width: 400px;
+  align-self: center;
 }
 
 .friends-title h1 {
@@ -34,6 +36,7 @@
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   flex: 1;
   overflow-y: auto;
+  width: 450px;
 }
 
 /* ========================================
@@ -46,6 +49,9 @@
   border-radius: 10px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   margin-bottom: 20px;
+  height: 60px;
+  width: 450px;
+  
 }
 
 .visibility-toggle-row {
@@ -131,6 +137,7 @@
 
 .search-container {
   margin-bottom: 20px;
+ width: 430px ;
 }
 
 .search-input {
@@ -153,6 +160,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+
 }
 
 .search-hint {
@@ -191,6 +199,8 @@
   border: 1px solid #e0e0e0;
   border-radius: 10px;
   transition: transform 0.2s, box-shadow 0.2s;
+  width: 400px ;
+  height: 20px;
 }
 
 .user-card:hover {
@@ -210,7 +220,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #000000 100%);
   color: white;
   display: flex;
   align-items: center;
@@ -256,7 +266,7 @@
 
 .btn-add {
   padding: 6px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #d2b48c 100%);
   color: white;
   border: none;
   border-radius: 15px;
