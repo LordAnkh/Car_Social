@@ -115,7 +115,7 @@
   .content {
     flex: 1;
     overflow-y: auto;
-    padding-bottom: 120px;
+    padding-bottom: 20px;
     position: relative;
     z-index: 1;
   }
@@ -164,36 +164,6 @@
     font-size: 11px;
     color: var(--text-dim);
     margin-left: 2px;
-  }
-
-  /* Stats row */
-  .stats-section {
-    margin-top: 20px;
-  }
-  .stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
-  }
-  .stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 14px;
-    text-align: center;
-  }
-  .stat-card .value {
-    font-size: 20px;
-    font-weight: 700;
-    color: #333;
-  }
-  .stat-card .label {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--text-dim);
-    margin-top: 4px;
   }
 
   /* Log section */
@@ -271,17 +241,12 @@
     border-color: var(--accent);
   }
 
-  /* Bottom action button */
-  .action-bar {
-    position: fixed;
-    bottom: 0;
-    left: 100px;
-    right: 0;
-    padding: 16px 20px calc(env(safe-area-inset-bottom, 16px) + 16px);
-    background: linear-gradient(to top, #f5e6d3 60%, transparent);
-    z-index: 10;
+  /* Tracking buttons */
+  .tracking-controls {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
   }
   .track-btn {
     width: 100%;
@@ -401,8 +366,8 @@
       margin-left: auto;
       padding-left: 0;
     }
-    .action-bar {
-      left: 0;
+    .content {
+      padding-bottom: 80px;
     }
   }
 
@@ -629,6 +594,12 @@
   <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handlePhotoCapture(event)">
 
   <div class="content">
+
+    <!-- Tracking Controls -->
+    <div class="tracking-controls">
+      <button class="track-btn start" id="trackBtn" onclick="toggleTracking()">START TRACKING</button>
+      <button id="cancelTripBtn" onclick="cancelTrip()" style="display: none; width: 100%; padding: 14px; border: 1px solid #c33; border-radius: 12px; background: white; color: #c33; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;">CANCEL TRIP</button>
+    </div>
 
     <!-- Camera Section -->
     <div class="coords-section">
