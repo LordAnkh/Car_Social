@@ -47,6 +47,10 @@
   padding-top: 16px !important;
 }
 
+.nav-feedback-btn {
+  color: #e6a23c !important;
+}
+
 @media (max-width: 480px) {
   .side-nav {
     top: auto;

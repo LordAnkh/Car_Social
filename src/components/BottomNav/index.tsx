@@ -17,6 +17,7 @@ const BottomNav: React.FC = () => {
       <button onClick={() => navigate('/home')}>Home</button>
       <button onClick={() => window.location.href = '/tracker.html'}>Tracker</button>
       <button onClick={() => navigate('/friends')}>Friends</button>
+      <button className="nav-feedback-btn" onClick={() => window.open('https://docs.google.com/forms/d/e/1FAIpQLSfYgevxbT23c4rdVOBhEJb4rPaxx2wB1zEapZ06_FoLIyNkSQ/viewform?usp=header', '_blank')}>Feedback</button>
       {user ? (
         <button className="nav-logout-btn" onClick={handleLogout}>Logout</button>
       ) : (
