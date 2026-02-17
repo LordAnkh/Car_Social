@@ -56,10 +56,20 @@
     flex-direction: row;
     padding: 10px 20px;
     border-radius: 30px;
+    width: auto;
   }
 
   .side-nav button {
     padding: 8px 14px;
     font-size: 12px;
+  }
+
+  .nav-logout-btn,
+  .nav-login-btn {
+    margin-top: 0 !important;
+    border-top: none !important;
+    border-left: 1px solid #e0e0e0 !important;
+    padding-top: 8px !important;
+    padding-left: 14px !important;
   }
 }
