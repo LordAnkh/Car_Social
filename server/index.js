@@ -133,9 +133,16 @@ app.post('/api/signup', async (req, res) => {
 
     const { email, password, name } = req.body;
 
-    const existingUser = await users.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+    const existingEmail = await users.findOne({ email });
+    if (existingEmail) {
+      return res.status(400).json({ message: 'Email already in use' });
+    }
+
+    if (name && name.trim()) {
+      const existingName = await users.findOne({ name: { $regex: new RegExp(`^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+      if (existingName) {
+        return res.status(400).json({ message: 'Username already taken' });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -143,7 +150,7 @@ app.post('/api/signup', async (req, res) => {
     const newUser = {
       email,
       password: hashedPassword,
-      name: name || null,
+      name: name ? name.trim() : null,
       createdAt: new Date(),
     };
 
@@ -340,6 +347,14 @@ app.put('/api/profile', authenticateToken, async (req, res) => {
 
     if (!name || !name.trim()) {
       return res.status(400).json({ message: 'Name is required' });
+    }
+
+    const existingName = await users.findOne({
+      name: { $regex: new RegExp(`^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+      _id: { $ne: new ObjectId(req.user.userId) },
+    });
+    if (existingName) {
+      return res.status(400).json({ message: 'Username already taken' });
     }
 
     await users.updateOne(
