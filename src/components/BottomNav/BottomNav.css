@@ -33,6 +33,20 @@
   background: rgba(210, 180, 140, 0.3);
 }
 
+.nav-logout-btn {
+  color: #c33 !important;
+  margin-top: 8px;
+  border-top: 1px solid #e0e0e0 !important;
+  padding-top: 16px !important;
+}
+
+.nav-login-btn {
+  color: #4a8430 !important;
+  margin-top: 8px;
+  border-top: 1px solid #e0e0e0 !important;
+  padding-top: 16px !important;
+}
+
 @media (max-width: 480px) {
   .side-nav {
     top: auto;

@@ -6,33 +6,33 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="LocTrack">
-<meta name="theme-color" content="#0a0a0f">
+<meta name="theme-color" content="#d2b48c">
 <title>Location Tracker</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230a0a0f' width='100' height='100' rx='20'/><circle cx='50' cy='45' r='18' fill='none' stroke='%2300e4a0' stroke-width='3'/><circle cx='50' cy='45' r='5' fill='%2300e4a0'/><path d='M50 63 L50 78' stroke='%2300e4a0' stroke-width='3' stroke-linecap='round'/></svg>">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
   :root {
-    --bg: #0a0a0f;
-    --surface: #12121a;
-    --surface-2: #1a1a26;
-    --border: #2a2a3a;
-    --text: #e8e8f0;
-    --text-dim: #6a6a80;
-    --accent: #00e4a0;
-    --accent-dim: rgba(0, 228, 160, 0.12);
-    --red: #ff4060;
-    --red-dim: rgba(255, 64, 96, 0.12);
-    --orange: #ff9040;
+    --bg: #f5e6d3;
+    --surface: #ffffff;
+    --surface-2: #f0ebe4;
+    --border: #e0e0e0;
+    --text: #333333;
+    --text-dim: #999999;
+    --accent: #4a8430;
+    --accent-dim: rgba(74, 132, 48, 0.12);
+    --red: #c33;
+    --red-dim: rgba(204, 51, 51, 0.08);
+    --orange: #e6a23c;
   }
 
   html, body {
     height: 100%;
-    background: var(--bg);
+    background: linear-gradient(180deg, #d2b48c 0%, #f5e6d3 100%);
     color: var(--text);
-    font-family: 'DM Sans', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
   }
@@ -43,6 +43,7 @@
     flex-direction: column;
     max-width: 480px;
     margin: 0 auto;
+    margin-left: max(120px, calc(50vw - 190px));
     padding: 0 20px;
     position: relative;
   }
@@ -56,7 +57,7 @@
     width: 300px;
     height: 300px;
     border-radius: 50%;
-    background: radial-gradient(circle, var(--accent-dim) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(74, 132, 48, 0.15) 0%, transparent 70%);
     opacity: 0;
     transition: opacity 1.2s ease;
     pointer-events: none;
@@ -66,7 +67,7 @@
 
   /* Header */
   .header {
-    padding: 60px 0 12px;
+    padding: 40px 0 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -74,15 +75,13 @@
     z-index: 1;
   }
   .header h1 {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 18px;
-    font-weight: 600;
-    letter-spacing: -0.3px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #333;
   }
   .header .status-pill {
-    font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
-    font-weight: 500;
+    font-weight: 600;
     padding: 5px 12px;
     border-radius: 20px;
     display: flex;
@@ -155,9 +154,8 @@
     margin-bottom: 6px;
   }
   .coord-card .value {
-    font-family: 'JetBrains Mono', monospace;
     font-size: 17px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text);
     transition: color 0.4s ease;
   }
@@ -185,9 +183,9 @@
     text-align: center;
   }
   .stat-card .value {
-    font-family: 'JetBrains Mono', monospace;
     font-size: 20px;
-    font-weight: 600;
+    font-weight: 700;
+    color: #333;
   }
   .stat-card .label {
     font-size: 10px;
@@ -216,10 +214,10 @@
     overflow-y: auto;
   }
   .log-item {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-dim);
     background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 10px 12px;
     display: flex;
@@ -261,12 +259,12 @@
     background: var(--surface-2);
     border: 1px solid var(--border);
     color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
     font-size: 13px;
     padding: 6px 10px;
     border-radius: 8px;
     width: 140px;
     text-align: right;
+    font-family: inherit;
   }
   .setting-row input:focus, .setting-row select:focus {
     outline: none;
@@ -277,10 +275,10 @@
   .action-bar {
     position: fixed;
     bottom: 0;
-    left: 0;
+    left: 100px;
     right: 0;
     padding: 16px 20px calc(env(safe-area-inset-bottom, 16px) + 16px);
-    background: linear-gradient(to top, var(--bg) 60%, transparent);
+    background: linear-gradient(to top, #f5e6d3 60%, transparent);
     z-index: 10;
     display: flex;
     justify-content: center;
@@ -291,9 +289,9 @@
     padding: 18px;
     border: none;
     border-radius: 16px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: inherit;
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.5px;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -302,7 +300,7 @@
   }
   .track-btn.start {
     background: var(--accent);
-    color: var(--bg);
+    color: white;
   }
   .track-btn.start:active { transform: scale(0.97); }
   .track-btn.stop {
@@ -320,8 +318,8 @@
     right: 20px;
     padding: 12px 16px;
     border-radius: 12px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 600;
     text-align: center;
     z-index: 20;
     transform: translateY(-120%);
@@ -330,18 +328,88 @@
     margin: 0 auto;
   }
   .message-bar.visible { transform: translateY(0); }
-  .message-bar.info { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(0,228,160,0.2); }
-  .message-bar.error { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,64,96,0.2); }
+  .message-bar.info { background: white; color: var(--accent); border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  .message-bar.error { background: white; color: var(--red); border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
   /* Scrollbar */
   .content::-webkit-scrollbar { width: 4px; }
   .content::-webkit-scrollbar-track { background: transparent; }
   .content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
+  /* Side Nav (desktop) / Bottom Nav (mobile) */
+  .tracker-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 16px 10px;
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    width: 100px;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
+  }
+  .tracker-nav button {
+    padding: 14px 12px;
+    border-radius: 10px;
+    background: transparent;
+    color: #333;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    font-family: inherit;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .tracker-nav button:hover {
+    background: rgba(210, 180, 140, 0.3);
+  }
+  .tracker-nav .nav-logout-btn {
+    color: #c33;
+    margin-top: 8px;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 16px;
+  }
+  .tracker-nav .nav-login-btn {
+    color: #4a8430;
+    margin-top: 8px;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 16px;
+  }
+
+  @media (max-width: 480px) {
+    .tracker-nav {
+      top: auto;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      flex-direction: row;
+      padding: 10px 20px;
+      border-radius: 30px;
+      width: auto;
+    }
+    .tracker-nav button {
+      padding: 8px 14px;
+      font-size: 12px;
+    }
+    .app {
+      margin-left: auto;
+      padding-left: 0;
+    }
+    .action-bar {
+      left: 0;
+    }
+  }
+
   /* Camera button */
   .camera-btn {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: white;
+    border: 1px solid #ddd;
     color: var(--text);
     padding: 8px 12px;
     border-radius: 10px;
@@ -358,7 +426,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.95);
+    background: rgba(0, 0, 0, 0.7);
     z-index: 100;
     display: none;
     flex-direction: column;
@@ -374,7 +442,6 @@
     margin-bottom: 20px;
   }
   .photo-modal .info {
-    font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     color: var(--text-dim);
     margin-bottom: 20px;
@@ -387,7 +454,7 @@
     padding: 12px 24px;
     border-radius: 10px;
     border: none;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: inherit;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -395,12 +462,12 @@
   }
   .photo-modal .send-btn {
     background: var(--accent);
-    color: var(--bg);
+    color: white;
   }
   .photo-modal .cancel-btn {
-    background: var(--surface);
+    background: white;
     color: var(--text);
-    border: 1px solid var(--border);
+    border: 1px solid #ddd;
   }
   .photo-modal button:active { transform: scale(0.95); }
 
@@ -410,8 +477,7 @@
     top: -4px;
     right: -4px;
     background: var(--accent);
-    color: var(--bg);
-    font-family: 'JetBrains Mono', monospace;
+    color: white;
     font-size: 9px;
     font-weight: 700;
     padding: 2px 5px;
@@ -427,7 +493,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.95);
+    background: rgba(0, 0, 0, 0.5);
     z-index: 100;
     display: none;
     flex-direction: column;
@@ -437,24 +503,23 @@
   }
   .post-details-modal.visible { display: flex; }
   .post-details-form {
-    background: var(--bg);
+    background: white;
     border: 1px solid var(--border);
     border-radius: 16px;
     padding: 24px;
     max-width: 500px;
     width: 100%;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
   }
   .post-details-form h2 {
     margin: 0 0 20px 0;
     font-size: 20px;
     color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
   }
   .post-details-form label {
     display: block;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--text-dim);
+    font-size: 13px;
+    color: #555;
     margin-bottom: 8px;
     font-weight: 600;
   }
@@ -462,12 +527,12 @@
   .post-details-form textarea {
     width: 100%;
     padding: 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: #fafafa;
+    border: 1px solid #ddd;
     border-radius: 10px;
     color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
+    font-family: inherit;
+    font-size: 14px;
     margin-bottom: 16px;
     box-sizing: border-box;
   }
@@ -490,20 +555,20 @@
     padding: 12px 24px;
     border-radius: 10px;
     border: none;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
+    font-family: inherit;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
   }
   .post-details-form .submit-btn {
     background: var(--accent);
-    color: var(--bg);
+    color: white;
   }
   .post-details-form .cancel-btn {
-    background: var(--surface);
+    background: white;
     color: var(--text);
-    border: 1px solid var(--border);
+    border: 1px solid #ddd;
   }
   .post-details-form button:active { transform: scale(0.95); }
   .post-details-form button:disabled {
@@ -513,6 +578,13 @@
 </style>
 </head>
 <body>
+
+<nav class="tracker-nav">
+  <button onclick="window.location.href='/home'">Home</button>
+  <button onclick="window.location.href='/tracker.html'" style="background: rgba(210, 180, 140, 0.3);">Tracker</button>
+  <button onclick="window.location.href='/friends'">Friends</button>
+  <button id="navAuthBtn" class="nav-logout-btn" onclick="handleNavAuth()">Logout</button>
+</nav>
 
 <div class="ambient-glow" id="glow"></div>
 <div class="message-bar" id="messageBar"></div>
@@ -545,8 +617,7 @@
 
 <div class="app">
   <div class="header">
-    <button onclick="window.location.href='/home'" style="background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;">← Back</button>
-    <h1>⌖ LocTrack</h1>
+    <h1>LocTrack</h1>
     <div class="status-pill idle" id="statusPill">
       <span class="dot"></span>
       <span id="statusText">IDLE</span>
@@ -565,17 +636,17 @@
       <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; text-align: center; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
         <div id="photoGallery" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; justify-content: center; width: 100%;"></div>
         <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-          <button id="captureBtn" onclick="openCamera()" disabled style="background: var(--accent); color: var(--bg); border: none; padding: 12px 24px; border-radius: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 600; cursor: pointer; font-size: 14px; opacity: 0.5;">
-            📷 CAPTURE PHOTO
+          <button id="captureBtn" onclick="openCamera()" disabled style="background: var(--accent); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-family: inherit; font-weight: 600; cursor: pointer; font-size: 14px; opacity: 0.5;">
+            CAPTURE PHOTO
           </button>
-          <button id="publishBtn" onclick="openPublishModal()" style="display: none; background: var(--surface); color: var(--accent); border: 1px solid var(--accent); padding: 12px 24px; border-radius: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 600; cursor: pointer; font-size: 14px;">
-            📝 PUBLISH
+          <button id="publishBtn" onclick="openPublishModal()" style="display: none; background: white; color: var(--accent); border: 1px solid var(--accent); padding: 12px 24px; border-radius: 10px; font-family: inherit; font-weight: 600; cursor: pointer; font-size: 14px;">
+            PUBLISH
           </button>
         </div>
-        <div id="cameraStatus" style="margin-top: -5px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); font-style: italic;">
+        <div id="cameraStatus" style="margin-top: -5px; font-size: 12px; color: var(--text-dim); font-style: italic;">
           Start tracking to enable camera
         </div>
-        <div id="photoCount" style="margin-top: 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim);">
+        <div id="photoCount" style="margin-top: 10px; font-size: 12px; color: var(--text-dim);">
           0 photos captured
         </div>
       </div>
@@ -632,7 +703,7 @@
 
   <div class="action-bar">
     <button class="track-btn start" id="trackBtn" onclick="toggleTracking()">START TRACKING</button>
-    <button id="cancelTripBtn" onclick="cancelTrip()" style="display: none; width: 100%; max-width: 440px; margin-top: 8px; padding: 14px; border: 1px solid rgba(255, 64, 96, 0.3); border-radius: 12px; background: var(--red-dim); color: var(--red); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;">CANCEL TRIP</button>
+    <button id="cancelTripBtn" onclick="cancelTrip()" style="display: none; width: 100%; max-width: 440px; margin-top: 8px; padding: 14px; border: 1px solid #c33; border-radius: 12px; background: white; color: #c33; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;">CANCEL TRIP</button>
   </div>
 </div>
 
@@ -651,9 +722,10 @@
   let totalPhotoSize = 0;
   let currentPosition = null; // Store current GPS position for photo capture
 
-  // Show logged-in user badge
+  // Show logged-in user badge and configure nav auth button
   try {
     const storedUser = localStorage.getItem('user');
+    const authBtn = document.getElementById('navAuthBtn');
     if (storedUser) {
       const user = JSON.parse(storedUser);
       const badge = document.getElementById('userBadge');
@@ -661,8 +733,28 @@
         badge.textContent = user.name || user.email;
         badge.style.display = 'block';
       }
+      if (authBtn) {
+        authBtn.textContent = 'Logout';
+        authBtn.className = 'nav-logout-btn';
+      }
+    } else {
+      if (authBtn) {
+        authBtn.textContent = 'Login';
+        authBtn.className = 'nav-login-btn';
+      }
     }
   } catch (e) {}
+
+  function handleNavAuth() {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    } else {
+      window.location.href = '/';
+    }
+  }
 
   // Hardcoded server config
   const SERVER_URL = window.location.origin;

@@ -139,10 +139,17 @@ export default function Friends() {
     return (name || email || '?')[0].toUpperCase();
   };
 
+  const renderAvatar = (name?: string, email?: string, pictureUrl?: string | null) => {
+    if (pictureUrl) {
+      return <img className="user-card-avatar-img" src={pictureUrl} alt="" />;
+    }
+    return <div className="user-card-avatar">{getInitial(name, email)}</div>;
+  };
+
   const renderSearchResult = (user: UserSearchResult) => (
     <div key={user._id} className="user-card">
       <div className="user-card-info">
-        <div className="user-card-avatar">{getInitial(user.name, user.email)}</div>
+        {renderAvatar(user.name, user.email, user.profilePictureUrl)}
         <div className="user-card-details">
           <p className="user-card-name">{user.name || 'No Name'}</p>
           <p className="user-card-email">{user.email}</p>
@@ -171,7 +178,7 @@ export default function Friends() {
   const renderRequest = (request: FriendRequest) => (
     <div key={request._id} className="user-card">
       <div className="user-card-info">
-        <div className="user-card-avatar">{getInitial(request.senderName, request.senderEmail)}</div>
+        {renderAvatar(request.senderName, request.senderEmail, request.senderProfilePictureUrl)}
         <div className="user-card-details">
           <p className="user-card-name">{request.senderName || 'No Name'}</p>
           <p className="user-card-email">{request.senderEmail}</p>
@@ -187,7 +194,7 @@ export default function Friends() {
   const renderFriend = (friend: Friend) => (
     <div key={friend.id} className="user-card">
       <div className="user-card-info">
-        <div className="user-card-avatar">{getInitial(friend.name, friend.email)}</div>
+        {renderAvatar(friend.name, friend.email, friend.profilePictureUrl)}
         <div className="user-card-details">
           <p className="user-card-name">{friend.name || 'No Name'}</p>
           <p className="user-card-email">{friend.email}</p>

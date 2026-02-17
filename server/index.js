@@ -775,7 +775,8 @@ app.get('/api/users/search', authenticateToken, async (req, res) => {
         else if (existing.senderId === req.user.userId) friendStatus = 'pending_sent';
         else friendStatus = 'pending_received';
       }
-      return { _id: uid, name: u.name, email: u.email, friendStatus };
+      const profilePictureUrl = u.profilePictureKey ? generateSasUrl(u.profilePictureKey) : null;
+      return { _id: uid, name: u.name, email: u.email, friendStatus, profilePictureUrl };
     });
 
     res.json({ users: enriched });
@@ -852,7 +853,24 @@ app.get('/api/friends/requests', authenticateToken, async (req, res) => {
       .sort({ createdAt: -1 })
       .toArray();
 
-    res.json({ requests });
+    // Look up sender profile pictures
+    const senderIds = requests.map(r => r.senderId).filter(id => id);
+    const users = db.collection('user_credentals');
+    const senders = await users.find(
+      { _id: { $in: senderIds.map(id => new ObjectId(id)) } },
+      { projection: { profilePictureKey: 1 } }
+    ).toArray();
+    const picMap = {};
+    senders.forEach(u => {
+      if (u.profilePictureKey) picMap[u._id.toString()] = generateSasUrl(u.profilePictureKey);
+    });
+
+    const enrichedRequests = requests.map(r => ({
+      ...r,
+      senderProfilePictureUrl: picMap[r.senderId] || null,
+    }));
+
+    res.json({ requests: enrichedRequests });
   } catch (error) {
     console.error('Get friend requests error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -937,7 +955,24 @@ app.get('/api/friends', authenticateToken, async (req, res) => {
       return { id: doc.senderId, name: doc.senderName, email: doc.senderEmail };
     });
 
-    res.json({ friends });
+    // Look up profile pictures for all friends
+    const friendIds = friends.map(f => f.id).filter(id => id);
+    const users = db.collection('user_credentals');
+    const friendUsers = await users.find(
+      { _id: { $in: friendIds.map(id => new ObjectId(id)) } },
+      { projection: { profilePictureKey: 1 } }
+    ).toArray();
+    const picMap = {};
+    friendUsers.forEach(u => {
+      if (u.profilePictureKey) picMap[u._id.toString()] = generateSasUrl(u.profilePictureKey);
+    });
+
+    const enrichedFriends = friends.map(f => ({
+      ...f,
+      profilePictureUrl: picMap[f.id] || null,
+    }));
+
+    res.json({ friends: enrichedFriends });
   } catch (error) {
     console.error('Get friends error:', error);
     res.status(500).json({ message: 'Server error' });

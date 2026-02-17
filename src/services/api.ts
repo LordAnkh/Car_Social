@@ -204,6 +204,7 @@ export interface UserSearchResult {
   name?: string;
   email: string;
   friendStatus: 'accepted' | 'pending_sent' | 'pending_received' | null;
+  profilePictureUrl?: string | null;
 }
 
 export interface FriendRequest {
@@ -211,6 +212,7 @@ export interface FriendRequest {
   senderId: string;
   senderName?: string;
   senderEmail: string;
+  senderProfilePictureUrl?: string | null;
   receiverId: string;
   receiverName?: string;
   receiverEmail: string;
@@ -222,6 +224,7 @@ export interface Friend {
   id: string;
   name?: string;
   email: string;
+  profilePictureUrl?: string | null;
 }
 
 export const friendService = {

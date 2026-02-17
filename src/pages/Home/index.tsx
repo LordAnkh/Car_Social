@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import './Home.css';
 import { useAuth } from '../../context/AuthContext';
@@ -73,8 +72,7 @@ function DatasetMap({ gpsPoints, datasetId }: { gpsPoints: GpsPoint[]; datasetId
 }
 
 export default function Homepage() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -145,11 +143,6 @@ export default function Homepage() {
     } finally {
       setLoadingPhotos(prev => ({ ...prev, [tripId]: false }));
     }
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
   };
 
   const formatDate = (dateString: string) => {
@@ -360,18 +353,9 @@ export default function Homepage() {
 
   return (
     <div className="home">
-      {user ? (
-        <button className="logout-button" onClick={handleLogout}>
-          Logout
-        </button>
-      ) : (
-        <button className="logout-button" onClick={() => navigate('/')}>
-          Login
-        </button>
-      )}
 
       <div className="home-title">
-        <h1>Cork Board</h1>
+        <h1>PinBoard</h1>
         <p className="home-username">{user?.name || user?.email || 'Guest'}</p>
       </div>
 
