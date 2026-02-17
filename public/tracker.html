@@ -594,6 +594,10 @@
   <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handlePhotoCapture(event)">
 
   <div class="content">
+    <!-- Hidden stat counters (referenced by JS) -->
+    <span id="pointCount" style="display:none">0</span>
+    <span id="sentCount" style="display:none">0</span>
+    <span id="bufferedCount" style="display:none">0</span>
 
     <!-- Tracking Controls -->
     <div class="tracking-controls">
@@ -619,25 +623,6 @@
         </div>
         <div id="photoCount" style="margin-top: 10px; font-size: 12px; color: var(--text-dim);">
           0 photos captured
-        </div>
-      </div>
-    </div>
-
-    <!-- Stats -->
-    <div class="stats-section">
-      <div class="coords-label">Session</div>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="value" id="pointCount">0</div>
-          <div class="label">Collected</div>
-        </div>
-        <div class="stat-card">
-          <div class="value" id="sentCount">0</div>
-          <div class="label">Sent</div>
-        </div>
-        <div class="stat-card">
-          <div class="value" id="bufferedCount">0</div>
-          <div class="label">Photos</div>
         </div>
       </div>
     </div>
@@ -672,10 +657,6 @@
 
   </div>
 
-  <div class="action-bar">
-    <button class="track-btn start" id="trackBtn" onclick="toggleTracking()">START TRACKING</button>
-    <button id="cancelTripBtn" onclick="cancelTrip()" style="display: none; width: 100%; max-width: 440px; margin-top: 8px; padding: 14px; border: 1px solid #c33; border-radius: 12px; background: white; color: #c33; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;">CANCEL TRIP</button>
-  </div>
 </div>
 
 <script>
@@ -741,9 +722,7 @@
   // UI Updates
   // ============================================
   function updateUI(coords) {
-    document.getElementById('pointCount').textContent = gpsPointsArray.length;
-    document.getElementById('sentCount').textContent = pointsSent;
-    document.getElementById('bufferedCount').textContent = capturedPhotos.length;
+    // Stats section removed — no-op
   }
 
   function setStatus(tracking) {
