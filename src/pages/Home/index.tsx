@@ -7,7 +7,12 @@ import { tripService, Trip, GpsPoint, Photo } from '../../services/api';
 type FeedItem =
   | { type: 'trip'; data: Trip };
 
-function DatasetMap({ gpsPoints, datasetId }: { gpsPoints: GpsPoint[]; datasetId: string }) {
+function DatasetMap({ gpsPoints, datasetId, photos, onPhotoMarkerClick }: {
+  gpsPoints: GpsPoint[];
+  datasetId: string;
+  photos?: Photo[];
+  onPhotoMarkerClick?: (photoIndex: number) => void;
+}) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
 
@@ -57,6 +62,27 @@ function DatasetMap({ gpsPoints, datasetId }: { gpsPoints: GpsPoint[]; datasetId
       }
     }
 
+    // Add photo location markers
+    if (photos && photos.length > 0) {
+      photos.forEach((photo, idx) => {
+        if (!photo.location) return;
+        const marker = L.circleMarker(
+          [photo.location.latitude, photo.location.longitude],
+          {
+            radius: 6,
+            fillColor: '#9c27b0',
+            color: '#fff',
+            weight: 2,
+            fillOpacity: 0.9,
+          }
+        ).addTo(map);
+        marker.bindPopup(`📷 Photo ${idx + 1}`);
+        marker.on('click', () => {
+          if (onPhotoMarkerClick) onPhotoMarkerClick(idx);
+        });
+      });
+    }
+
     map.fitBounds(polyline.getBounds(), { padding: [30, 30] });
 
     return () => {
@@ -65,7 +91,7 @@ function DatasetMap({ gpsPoints, datasetId }: { gpsPoints: GpsPoint[]; datasetId
         mapInstance.current = null;
       }
     };
-  }, [gpsPoints, datasetId]);
+  }, [gpsPoints, datasetId, photos, onPhotoMarkerClick]);
 
   return <div ref={mapRef} className="dataset-map" />;
 }
@@ -106,9 +132,10 @@ export default function Homepage() {
       setFeedItems(combinedFeed);
       setError('');
 
-      // Pre-load GPS points for visible trips (map is default slide)
+      // Pre-load GPS points and photos for visible trips
       combinedFeed.forEach(item => {
         loadPointsForTrip(item.data._id);
+        loadPhotosForTrip(item.data._id);
       });
     } catch (err: any) {
       setError('Failed to load content');
@@ -267,7 +294,15 @@ export default function Homepage() {
                 <p>Loading map...</p>
               </div>
             ) : (
-              <DatasetMap gpsPoints={points} datasetId={trip._id} />
+              <DatasetMap
+                gpsPoints={points}
+                datasetId={trip._id}
+                photos={loadedPhotos[trip._id] || []}
+                onPhotoMarkerClick={(photoIdx) => {
+                  loadPhotosForTrip(trip._id);
+                  setCurrentPhotoIndex(prev => ({ ...prev, [trip._id]: photoIdx + 1 }));
+                }}
+              />
             )
           ) : isPhotoLoading || !currentPhoto ? (
             <div className="carousel-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
