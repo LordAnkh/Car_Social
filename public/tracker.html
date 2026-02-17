@@ -349,7 +349,18 @@
 
   @media (max-width: 480px) {
     .tracker-nav {
-      display: none;
+      top: auto;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      flex-direction: row;
+      padding: 10px 20px;
+      border-radius: 30px;
+      width: auto;
+    }
+    .tracker-nav button {
+      padding: 8px 14px;
+      font-size: 12px;
     }
     .app {
       margin-left: auto;
@@ -358,7 +369,7 @@
     }
     .content {
       overflow-y: hidden;
-      padding-bottom: 20px;
+      padding-bottom: 80px;
     }
   }
 
