@@ -13,13 +13,13 @@
 }
 .friends-title {
   background: rgb(255, 255, 255);
-  padding: 30px;
+  padding: 20px;
   border-radius: 10px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   margin-bottom: 20px;
   text-align: center;
   height: 30px;
-  width: 400px;
+  width: 450px;
   align-self: center;
 }
 
@@ -36,6 +36,7 @@
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   flex: 1;
   overflow-y: auto;
+
   width: 450px;
   align-self: center;
 }
