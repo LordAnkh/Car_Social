@@ -305,6 +305,31 @@ app.get('/api/locations/:userId', authenticateToken, async (req, res) => {
   }
 });
 
+// Get current user profile (fresh SAS URL)
+app.get('/api/me', authenticateToken, async (req, res) => {
+  try {
+    const db = client.db('Car_Database');
+    const users = db.collection('user_credentals');
+    const user = await users.findOne({ _id: new ObjectId(req.user.userId) });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    let profilePictureUrl = null;
+    if (user.profilePictureKey) {
+      profilePictureUrl = generateSasUrl(user.profilePictureKey);
+    }
+
+    res.json({
+      id: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      profilePictureUrl,
+    });
+  } catch (err) {
+    console.error('Get profile error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Update user profile
 app.put('/api/profile', authenticateToken, async (req, res) => {
   try {

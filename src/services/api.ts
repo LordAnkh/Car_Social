@@ -328,6 +328,17 @@ export const friendService = {
 // ===== Profile Service =====
 
 export const profileService = {
+  getMe: async (): Promise<{ id: string; email: string; name?: string; profilePictureUrl?: string | null }> => {
+    const response = await fetch(`${API_BASE}/me`, {
+      headers: authHeaders(),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to get profile');
+    }
+    return data;
+  },
+
   uploadPicture: async (base64: string): Promise<{ message: string; profilePictureUrl: string }> => {
     const response = await fetch(`${API_BASE}/profile/picture`, {
       method: 'POST',

@@ -40,12 +40,16 @@ export default function Friends() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [requestsRes, friendsRes] = await Promise.all([
+      const [requestsRes, friendsRes, meRes] = await Promise.all([
         friendService.getIncomingRequests(),
         friendService.getFriends(),
+        profileService.getMe(),
       ]);
       setPendingRequests(requestsRes.requests);
       setFriends(friendsRes.friends);
+      if (meRes.profilePictureUrl) {
+        updateUser({ profilePictureUrl: meRes.profilePictureUrl });
+      }
     } catch (err) {
       console.error('Failed to load friends data:', err);
     } finally {
