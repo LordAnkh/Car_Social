@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import BottomNav from '../../components/BottomNav';
 import { friendService, profileService, UserSearchResult, FriendRequest, Friend, getVisibility, setVisibility, FeedVisibility } from '../../services/api';
 import './Friends.css';
 
@@ -300,7 +299,6 @@ export default function Friends() {
           </>
         )}
       </div>
-      <BottomNav />
     </div>
   );
 }

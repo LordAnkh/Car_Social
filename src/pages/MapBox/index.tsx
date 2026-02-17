@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './MapBox.css';
 import { useAuth } from '../../context/AuthContext';
-import BottomNav from '../../components/BottomNav';
 import { tripService, Trip, GpsPoint, Photo } from '../../services/api';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -334,7 +333,6 @@ export default function Homepage() {
       
       </div>
 
-      <BottomNav />
     </div>
   );
 }

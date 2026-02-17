@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import './Home.css';
 import { useAuth } from '../../context/AuthContext';
-import BottomNav from '../../components/BottomNav';
 import { tripService, Trip, GpsPoint, Photo } from '../../services/api';
 
 type FeedItem =
@@ -403,7 +402,6 @@ export default function Homepage() {
         </div>
       )}
 
-      <BottomNav />
     </div>
   );
 }
