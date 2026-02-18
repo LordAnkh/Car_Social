@@ -140,9 +140,7 @@ export const tripService = {
   getTripPoints: async (tripId: string): Promise<{ gpsPoints: GpsPoint[] }> => {
     const response = await fetch(`${API_BASE}/trips/${tripId}/points`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders(),
     });
 
     if (!response.ok) {
@@ -155,9 +153,7 @@ export const tripService = {
   getTripPhotos: async (tripId: string): Promise<{ photos: Photo[] }> => {
     const response = await fetch(`${API_BASE}/trips/${tripId}/photos`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders(),
     });
 
     if (!response.ok) {
