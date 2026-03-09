@@ -80,4 +80,25 @@ router.post('/signup', async (req, res) => {
   }
 });
 
+router.post('/refresh', async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ message: 'Token required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const newToken = jwt.sign(
+      { userId: decoded.userId, email: decoded.email },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
+    );
+    res.json({ token: newToken });
+  } catch (error) {
+    res.status(403).json({ message: 'Invalid or expired token' });
+  }
+});
+
 module.exports = router;

@@ -20,7 +20,7 @@ function generateSasUrl(photoKey) {
     blobName: photoKey,
     permissions: BlobSASPermissions.parse('r'),
     startsOn: new Date(),
-    expiresOn: new Date(Date.now() + 60 * 60 * 1000),
+    expiresOn: new Date(Date.now() + 24 * 60 * 60 * 1000),
   }, sharedKeyCredential).toString();
 
   return `https://${accountName}.blob.core.windows.net/${containerName}/${photoKey}?${sasToken}`;
