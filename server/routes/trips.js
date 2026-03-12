@@ -99,13 +99,6 @@ router.post('/', authenticateAPIKeyOrToken, async (req, res) => {
       return res.status(400).json({ message: 'Photo keys array is required' });
     }
 
-    if (!title || !title.trim()) {
-      return res.status(400).json({ message: 'Title is required' });
-    }
-
-    if (!description || !description.trim()) {
-      return res.status(400).json({ message: 'Description is required' });
-    }
 
     let userId = 'anonymous';
     let userName = null;
@@ -130,8 +123,8 @@ router.post('/', authenticateAPIKeyOrToken, async (req, res) => {
       userId,
       userName,
       userEmail,
-      title: title.trim(),
-      description: description.trim()
+      title: title ? title.trim() : '',
+      description: description ? description.trim() : ''
     };
 
     const result = await trips.insertOne(trip);

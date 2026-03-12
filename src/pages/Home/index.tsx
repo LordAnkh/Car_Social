@@ -108,6 +108,9 @@ export default function Homepage() {
   const [loadingPoints, setLoadingPoints] = useState<{ [key: string]: boolean }>({});
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [editingTrip, setEditingTrip] = useState<{ id: string; title: string; description: string } | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const cursorRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     fetchAllContent();
@@ -116,6 +119,7 @@ export default function Homepage() {
   const fetchAllContent = async () => {
     try {
       setLoading(true);
+      cursorRef.current = undefined;
       const tripsResponse = await tripService.getAllTrips();
 
       const combinedFeed: FeedItem[] = tripsResponse.datasets.map(trip => ({
@@ -123,13 +127,11 @@ export default function Homepage() {
         data: trip,
       }));
 
-      combinedFeed.sort((a, b) => {
-        const dateA = new Date(a.data.createdAt).getTime();
-        const dateB = new Date(b.data.createdAt).getTime();
-        return dateB - dateA;
-      });
-
       setFeedItems(combinedFeed);
+      setHasMore(tripsResponse.hasMore);
+      if (combinedFeed.length > 0) {
+        cursorRef.current = combinedFeed[combinedFeed.length - 1].data.createdAt;
+      }
       setError('');
 
       // Pre-load GPS points and photos for visible trips
@@ -142,6 +144,31 @@ export default function Homepage() {
       console.error('Error fetching content:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMoreTrips = async () => {
+    if (loadingMore || !hasMore) return;
+    try {
+      setLoadingMore(true);
+      const tripsResponse = await tripService.getAllTrips(cursorRef.current);
+      const newItems: FeedItem[] = tripsResponse.datasets.map(trip => ({
+        type: 'trip' as const,
+        data: trip,
+      }));
+      setFeedItems(prev => [...prev, ...newItems]);
+      setHasMore(tripsResponse.hasMore);
+      if (newItems.length > 0) {
+        cursorRef.current = newItems[newItems.length - 1].data.createdAt;
+      }
+      newItems.forEach(item => {
+        loadPointsForTrip(item.data._id);
+        loadPhotosForTrip(item.data._id);
+      });
+    } catch (err: any) {
+      console.error('Error loading more trips:', err);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -409,6 +436,14 @@ export default function Homepage() {
           }
           return null;
         })}
+
+        {hasMore && (
+          <div className="load-more">
+            <button onClick={loadMoreTrips} disabled={loadingMore}>
+              {loadingMore ? 'Loading...' : 'Load more'}
+            </button>
+          </div>
+        )}
       </div>
 
       {editingTrip && (

@@ -23,14 +23,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check for stored token and user data on mount (page refresh)
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
 
     if (storedToken && storedUser) {
+      // Check if token is expired before restoring session
+      try {
+        const payload = JSON.parse(atob(storedToken.split('.')[1]));
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          return;
+        }
+      } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        return;
+      }
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
     }
+
+    // Listen for token expiry events fired by api.ts
+    const handleTokenExpired = () => {
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    };
+    window.addEventListener('tokenExpired', handleTokenExpired);
+    return () => window.removeEventListener('tokenExpired', handleTokenExpired);
   }, []);
 
   const login = (newToken: string, newUser: User) => {

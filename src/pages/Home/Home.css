@@ -117,6 +117,26 @@
   margin: 0;
 }
 
+.load-more {
+  text-align: center;
+  padding: 20px;
+}
+
+.load-more button {
+  padding: 10px 28px;
+  border: none;
+  border-radius: 6px;
+  background: #555;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.load-more button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* ========================================
    Post Card
    ======================================== */

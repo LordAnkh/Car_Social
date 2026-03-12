@@ -99,6 +99,7 @@ export interface Trip {
 
 export interface GetTripsResponse {
   datasets: Trip[];
+  hasMore: boolean;
 }
 
 const getToken = () => localStorage.getItem('token');
@@ -112,6 +113,50 @@ const authHeaders = (): Record<string, string> => {
   return headers;
 };
 
+function getTokenExpiry(token: string): number | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+async function refreshTokenIfNeeded(): Promise<void> {
+  const token = getToken();
+  if (!token) return;
+
+  const expiry = getTokenExpiry(token);
+  if (!expiry) return;
+
+  const msUntilExpiry = expiry - Date.now();
+  // Refresh if less than 2 hours remaining
+  if (msUntilExpiry > 2 * 60 * 60 * 1000) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/refresh`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (response.ok) {
+      const data = await response.json();
+      localStorage.setItem('token', data.token);
+    } else {
+      // Token is expired/invalid — force logout
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.dispatchEvent(new Event('tokenExpired'));
+    }
+  } catch {
+    // Silently fail — token will expire naturally
+  }
+}
+
+// Proactively check token every 30 minutes
+setInterval(refreshTokenIfNeeded, 30 * 60 * 1000);
+// Also check on load
+refreshTokenIfNeeded();
+
 export type FeedVisibility = 'public' | 'friends';
 
 export const getVisibility = (): FeedVisibility => {
@@ -123,9 +168,11 @@ export const setVisibility = (v: FeedVisibility) => {
 };
 
 export const tripService = {
-  getAllTrips: async (): Promise<GetTripsResponse> => {
+  getAllTrips: async (before?: string): Promise<GetTripsResponse> => {
     const visibility = getVisibility();
-    const response = await fetch(`${API_BASE}/trips?visibility=${visibility}`, {
+    const params = new URLSearchParams({ visibility });
+    if (before) params.set('before', before);
+    const response = await fetch(`${API_BASE}/trips?${params}`, {
       method: 'GET',
       headers: authHeaders(),
     });
