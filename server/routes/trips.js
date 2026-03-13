@@ -51,7 +51,7 @@ router.get('/', async (req, res) => {
 
     const PAGE_SIZE = 10;
     const allTrips = await trips
-      .find(filter, { projection: { gpsPoints: 0 } })
+      .find(filter, { projection: { gpsPoints: 0, userEmail: 0 } })
       .sort({ createdAt: -1 })
       .limit(PAGE_SIZE + 1)
       .toArray();

@@ -132,7 +132,7 @@ router.get('/users/search', authenticateToken, async (req, res) => {
         else friendStatus = 'pending_received';
       }
       const profilePictureUrl = u.profilePictureKey ? generateSasUrl(u.profilePictureKey) : null;
-      return { _id: uid, name: u.name, email: u.email, friendStatus, profilePictureUrl };
+      return { _id: uid, name: u.name, friendStatus, profilePictureUrl };
     });
 
     res.json({ users: enriched });

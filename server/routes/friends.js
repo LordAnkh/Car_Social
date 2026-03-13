@@ -20,9 +20,9 @@ router.get('/', authenticateToken, async (req, res) => {
 
     const friends = friendDocs.map(doc => {
       if (doc.senderId === req.user.userId) {
-        return { id: doc.receiverId, name: doc.receiverName, email: doc.receiverEmail };
+        return { id: doc.receiverId, name: doc.receiverName };
       }
-      return { id: doc.senderId, name: doc.senderName, email: doc.senderEmail };
+      return { id: doc.senderId, name: doc.senderName };
     });
 
     const friendIds = friends.map(f => f.id).filter(id => id);
@@ -142,8 +142,12 @@ router.get('/requests/sent', authenticateToken, async (req, res) => {
     });
 
     const enrichedRequests = requests.map(r => ({
-      ...r,
+      _id: r._id,
+      receiverId: r.receiverId,
+      receiverName: r.receiverName,
       receiverProfilePictureUrl: picMap[r.receiverId] || null,
+      status: r.status,
+      createdAt: r.createdAt,
     }));
 
     res.json({ requests: enrichedRequests });
@@ -175,8 +179,12 @@ router.get('/requests', authenticateToken, async (req, res) => {
     });
 
     const enrichedRequests = requests.map(r => ({
-      ...r,
+      _id: r._id,
+      senderId: r.senderId,
+      senderName: r.senderName,
       senderProfilePictureUrl: picMap[r.senderId] || null,
+      status: r.status,
+      createdAt: r.createdAt,
     }));
 
     res.json({ requests: enrichedRequests });
