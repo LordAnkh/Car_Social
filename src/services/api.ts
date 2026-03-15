@@ -80,18 +80,26 @@ export interface Photo {
   };
 }
 
+export interface TripParticipant {
+  userId: string;
+  userName?: string;
+  photoKeys: string[];
+  status: 'accepted' | 'left' | 'pending';
+}
+
 export interface Trip {
   _id: string;
-  gpsPoints: GpsPoint[];
-  photoKeys: string[];
-  totalPhotoSize: number;
   photoCount: number;
   totalPoints: number;
   timestamp: string;
   createdAt: string;
+  // normalized aliases — always present regardless of trip age
   userId: string;
   userName?: string;
-  userEmail?: string;
+  // new format fields
+  ownerId?: string;
+  ownerName?: string;
+  participants?: TripParticipant[];
   title: string;
   description: string;
   userProfilePictureUrl?: string;
@@ -238,6 +246,48 @@ export const tripService = {
 
     return data;
   },
+
+  previewTrip: async (tripId: string): Promise<{ trip: Partial<Trip> }> => {
+    const response = await fetch(`${API_BASE}/trips/${tripId}/preview`, {
+      method: 'GET',
+      headers: authHeaders(),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to preview trip');
+    return data;
+  },
+
+  joinTrip: async (tripId: string): Promise<{ message: string; trip: { id: string; title: string; ownerName: string } }> => {
+    const response = await fetch(`${API_BASE}/trips/${tripId}/join`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to join trip');
+    return data;
+  },
+
+  leaveTrip: async (tripId: string, deleteData: boolean): Promise<{ message: string }> => {
+    const response = await fetch(`${API_BASE}/trips/${tripId}/leave`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+      body: JSON.stringify({ deleteData }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to leave trip');
+    return data;
+  },
+
+  submitGps: async (tripId: string, gpsPoints: GpsPoint[]): Promise<{ message: string; pointsSaved: number }> => {
+    const response = await fetch(`${API_BASE}/trips/${tripId}/gps`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ gpsPoints }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to submit GPS points');
+    return data;
+  },
 };
 
 // ===== Friends System =====
@@ -245,20 +295,18 @@ export const tripService = {
 export interface UserSearchResult {
   _id: string;
   name?: string;
-  email: string;
   friendStatus: 'accepted' | 'pending_sent' | 'pending_received' | null;
   profilePictureUrl?: string | null;
 }
 
 export interface FriendRequest {
   _id: string;
-  senderId: string;
+  senderId?: string;
   senderName?: string;
-  senderEmail: string;
   senderProfilePictureUrl?: string | null;
-  receiverId: string;
+  receiverId?: string;
   receiverName?: string;
-  receiverEmail: string;
+  receiverProfilePictureUrl?: string | null;
   status: 'pending' | 'accepted' | 'rejected';
   createdAt: string;
 }
@@ -266,7 +314,6 @@ export interface FriendRequest {
 export interface Friend {
   id: string;
   name?: string;
-  email: string;
   profilePictureUrl?: string | null;
 }
 
@@ -307,6 +354,19 @@ export const friendService = {
 
     if (!response.ok) {
       throw new Error('Failed to fetch friend requests');
+    }
+
+    return response.json();
+  },
+
+  getSentRequests: async (): Promise<{ requests: FriendRequest[] }> => {
+    const response = await fetch(`${API_BASE}/friends/requests/sent`, {
+      method: 'GET',
+      headers: authHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch sent requests');
     }
 
     return response.json();
