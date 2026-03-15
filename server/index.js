@@ -7,6 +7,7 @@ const { connectDb } = require('./db');
 const { ensureContainer } = require('./azure');
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '../public')));
