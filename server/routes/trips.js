@@ -10,7 +10,14 @@ const router = Router();
 // Normalizes old single-owner trips to the new multi-participant shape.
 // Old trips stay untouched in the DB — this only affects API responses.
 function normalizeTrip(trip) {
-  if (trip.ownerId) return trip; // already new format
+  if (trip.ownerId) {
+    // New format — add userId/userName aliases so frontend keeps working
+    return {
+      ...trip,
+      userId: trip.ownerId,
+      userName: trip.ownerName,
+    };
+  }
 
   return {
     ...trip,
