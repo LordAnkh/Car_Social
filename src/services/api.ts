@@ -93,6 +93,9 @@ export interface Trip {
   totalPoints: number;
   timestamp: string;
   createdAt: string;
+  startedAt?: string;
+  endedAt?: string;
+  status?: 'pending' | 'active' | 'completed';
   // normalized aliases — always present regardless of trip age
   userId: string;
   userName?: string;
@@ -103,6 +106,22 @@ export interface Trip {
   title: string;
   description: string;
   userProfilePictureUrl?: string;
+}
+
+export interface TripParticipantDetail {
+  userId: string;
+  userName?: string;
+  status: 'accepted' | 'left' | 'pending';
+  photoCount: number;
+  isOwner: boolean;
+}
+
+export interface GetParticipantsResponse {
+  tripId: string;
+  title: string;
+  tripStatus: 'pending' | 'active' | 'completed';
+  ownerId: string;
+  participants: TripParticipantDetail[];
 }
 
 export interface GetTripsResponse {
@@ -192,7 +211,7 @@ export const tripService = {
     return response.json();
   },
 
-  getTripPoints: async (tripId: string): Promise<{ gpsPoints: GpsPoint[] }> => {
+  getTripPoints: async (tripId: string): Promise<{ tracks: { userId: string; userName?: string; gpsPoints: GpsPoint[] }[] }> => {
     const response = await fetch(`${API_BASE}/trips/${tripId}/points`, {
       method: 'GET',
       headers: authHeaders(),
@@ -257,13 +276,43 @@ export const tripService = {
     return data;
   },
 
-  joinTrip: async (tripId: string): Promise<{ message: string; trip: { id: string; title: string; ownerName: string } }> => {
+  joinTrip: async (tripId: string): Promise<{ message: string; trip: { id: string; title: string; ownerName: string; status: string } }> => {
     const response = await fetch(`${API_BASE}/trips/${tripId}/join`, {
       method: 'POST',
       headers: authHeaders(),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'Failed to join trip');
+    return data;
+  },
+
+  getParticipants: async (tripId: string): Promise<GetParticipantsResponse> => {
+    const response = await fetch(`${API_BASE}/trips/${tripId}/participants`, {
+      method: 'GET',
+      headers: authHeaders(),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to get participants');
+    return data;
+  },
+
+  startTrip: async (tripId: string): Promise<{ message: string; status: string }> => {
+    const response = await fetch(`${API_BASE}/trips/${tripId}/start`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to start trip');
+    return data;
+  },
+
+  endTrip: async (tripId: string): Promise<{ message: string; status: string }> => {
+    const response = await fetch(`${API_BASE}/trips/${tripId}/end`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to end trip');
     return data;
   },
 

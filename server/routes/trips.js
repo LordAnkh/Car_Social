@@ -141,19 +141,17 @@ router.get('/', async (req, res) => {
   }
 });
 
+// POST / — create a trip. gpsPoints and photoKeys are optional so a trip can be
+// created in 'pending' state before recording has started.
 router.post('/', authenticateAPIKeyOrToken, async (req, res) => {
   try {
     const db = getDb();
     const trips = db.collection('trips');
 
-    const { gpsPoints, photoKeys, totalPhotoSize, timestamp, totalPoints, photoCount, title, description } = req.body;
+    const { gpsPoints, photoKeys, totalPhotoSize, timestamp, totalPoints, photoCount, title, description, status } = req.body;
 
-    if (!gpsPoints || !Array.isArray(gpsPoints) || gpsPoints.length === 0) {
-      return res.status(400).json({ message: 'GPS points array is required' });
-    }
-
-    if (!photoKeys || !Array.isArray(photoKeys) || photoKeys.length === 0) {
-      return res.status(400).json({ message: 'Photo keys array is required' });
+    if (gpsPoints !== undefined && (!Array.isArray(gpsPoints) || gpsPoints.length === 0)) {
+      return res.status(400).json({ message: 'gpsPoints must be a non-empty array if provided' });
     }
 
     let ownerId = 'anonymous';
@@ -168,21 +166,25 @@ router.post('/', authenticateAPIKeyOrToken, async (req, res) => {
       }
     }
 
+    const keys = Array.isArray(photoKeys) ? photoKeys : [];
+    const tripStatus = status === 'active' ? 'active' : 'pending';
+
     const trip = {
       ownerId,
       ownerName,
       userEmail,
+      status: tripStatus,
       participants: [
         {
           userId: ownerId,
           userName: ownerName,
-          photoKeys,
+          photoKeys: keys,
           status: 'accepted',
         }
       ],
       totalPhotoSize: totalPhotoSize || 0,
-      photoCount: photoCount || photoKeys.length,
-      totalPoints: totalPoints || gpsPoints.length,
+      photoCount: photoCount || keys.length,
+      totalPoints: totalPoints || (gpsPoints ? gpsPoints.length : 0),
       timestamp: new Date(timestamp || new Date()),
       createdAt: new Date(),
       title: title ? title.trim() : '',
@@ -191,27 +193,27 @@ router.post('/', authenticateAPIKeyOrToken, async (req, res) => {
 
     const result = await trips.insertOne(trip);
 
-    const locationDocs = gpsPoints.map(point => ({
-      userId: ownerId,
-      latitude: point.latitude,
-      longitude: point.longitude,
-      altitude: point.altitude || 0,
-      speed: point.speed || 0,
-      accuracy: point.accuracy || 0,
-      timestamp: new Date(point.timestamp),
-      createdAt: new Date(),
-      tripId: result.insertedId
-    }));
-
-    if (locationDocs.length > 0) {
+    if (gpsPoints && gpsPoints.length > 0) {
+      const locationDocs = gpsPoints.map(point => ({
+        userId: ownerId,
+        latitude: point.latitude,
+        longitude: point.longitude,
+        altitude: point.altitude || 0,
+        speed: point.speed || 0,
+        accuracy: point.accuracy || 0,
+        timestamp: new Date(point.timestamp),
+        createdAt: new Date(),
+        tripId: result.insertedId
+      }));
       await db.collection('locations').insertMany(locationDocs);
     }
 
     res.status(201).json({
       message: 'Trip saved successfully',
       tripId: result.insertedId,
-      pointsSaved: gpsPoints.length,
-      photoCount: photoKeys.length,
+      pointsSaved: gpsPoints ? gpsPoints.length : 0,
+      photoCount: keys.length,
+      status: tripStatus,
     });
   } catch (error) {
     console.error('Save trip error:', error);
@@ -352,30 +354,45 @@ router.post('/:id/join', authenticateToken, async (req, res) => {
     const trip = await trips.findOne({ _id: new ObjectId(req.params.id) });
     if (!trip) return res.status(404).json({ message: 'Trip not found' });
 
-    const existing = (trip.participants || []).find(p => p.userId === req.user.userId);
-    if (existing) return res.status(409).json({ message: 'Already joined this trip' });
+    // Only allow joining pending or active trips
+    if (trip.status === 'completed') {
+      return res.status(400).json({ message: 'This trip has already ended' });
+    }
 
     if (getOwnerId(trip) === req.user.userId) {
       return res.status(400).json({ message: 'You are the owner of this trip' });
+    }
+
+    const existing = (trip.participants || []).find(p => p.userId === req.user.userId);
+    if (existing && existing.status === 'accepted') {
+      return res.status(409).json({ message: 'Already joined this trip' });
     }
 
     const user = await db.collection('user_credentals').findOne({
       _id: new ObjectId(req.user.userId)
     });
 
-    await trips.updateOne(
-      { _id: new ObjectId(req.params.id) },
-      {
-        $push: {
-          participants: {
-            userId: req.user.userId,
-            userName: user?.name || null,
-            photoKeys: [],
-            status: 'accepted',
+    if (existing) {
+      // Re-joining after leaving — update status back to accepted
+      await trips.updateOne(
+        { _id: new ObjectId(req.params.id), 'participants.userId': req.user.userId },
+        { $set: { 'participants.$.status': 'accepted' } }
+      );
+    } else {
+      await trips.updateOne(
+        { _id: new ObjectId(req.params.id) },
+        {
+          $push: {
+            participants: {
+              userId: req.user.userId,
+              userName: user?.name || null,
+              photoKeys: [],
+              status: 'accepted',
+            }
           }
         }
-      }
-    );
+      );
+    }
 
     res.json({
       message: 'Joined trip successfully',
@@ -383,10 +400,100 @@ router.post('/:id/join', authenticateToken, async (req, res) => {
         id: trip._id,
         title: trip.title,
         ownerName: trip.ownerName,
+        status: trip.status,
       }
     });
   } catch (error) {
     console.error('Join trip error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// GET /:id/participants — returns all participants and their status
+router.get('/:id/participants', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+    const trip = await db.collection('trips').findOne(
+      { _id: new ObjectId(req.params.id) },
+      { projection: { participants: 1, ownerId: 1, ownerName: 1, status: 1, title: 1 } }
+    );
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+
+    const participants = (trip.participants || []).map(p => ({
+      userId: p.userId,
+      userName: p.userName,
+      status: p.status,
+      photoCount: (p.photoKeys || []).length,
+      isOwner: p.userId === (trip.ownerId || trip.userId),
+    }));
+
+    res.json({
+      tripId: trip._id,
+      title: trip.title,
+      tripStatus: trip.status || 'active',
+      ownerId: trip.ownerId,
+      participants,
+    });
+  } catch (error) {
+    console.error('Get participants error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /:id/start — owner starts the trip (pending → active)
+router.post('/:id/start', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+    const trips = db.collection('trips');
+
+    const trip = await trips.findOne({ _id: new ObjectId(req.params.id) });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+
+    if (getOwnerId(trip) !== req.user.userId) {
+      return res.status(403).json({ message: 'Only the owner can start the trip' });
+    }
+
+    if (trip.status === 'completed') {
+      return res.status(400).json({ message: 'Trip has already ended' });
+    }
+
+    await trips.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { status: 'active', startedAt: new Date() } }
+    );
+
+    res.json({ message: 'Trip started', status: 'active' });
+  } catch (error) {
+    console.error('Start trip error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /:id/end — owner ends the trip (active → completed)
+router.post('/:id/end', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+    const trips = db.collection('trips');
+
+    const trip = await trips.findOne({ _id: new ObjectId(req.params.id) });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+
+    if (getOwnerId(trip) !== req.user.userId) {
+      return res.status(403).json({ message: 'Only the owner can end the trip' });
+    }
+
+    if (trip.status === 'completed') {
+      return res.status(400).json({ message: 'Trip is already completed' });
+    }
+
+    await trips.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { status: 'completed', endedAt: new Date() } }
+    );
+
+    res.json({ message: 'Trip ended', status: 'completed' });
+  } catch (error) {
+    console.error('End trip error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
