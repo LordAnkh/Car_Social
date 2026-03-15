@@ -1,5 +1,10 @@
 const jwt = require('jsonwebtoken');
 
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable must be set');
+}
+
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -8,7 +13,7 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ message: 'Access token required' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
+  jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
       return res.status(403).json({ message: 'Invalid or expired token' });
     }
@@ -19,7 +24,9 @@ const authenticateToken = (req, res, next) => {
 
 const authenticateAPIKey = (req, res, next) => {
   const apiKey = req.headers['x-api-key'];
-  const validKey = process.env.LOCATION_API_KEY || 'your-location-key';
+  const validKey = process.env.LOCATION_API_KEY;
+
+  if (!validKey) throw new Error('LOCATION_API_KEY environment variable must be set');
 
   if (!apiKey || apiKey !== validKey) {
     return res.status(401).json({ message: 'Invalid API key' });
@@ -33,7 +40,7 @@ const authenticateAPIKeyOrToken = (req, res, next) => {
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1];
-    jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
+    jwt.verify(token, JWT_SECRET, (err, user) => {
       if (err) {
         return res.status(403).json({ message: 'Invalid or expired token' });
       }
@@ -43,8 +50,8 @@ const authenticateAPIKeyOrToken = (req, res, next) => {
     return;
   }
 
-  const validKey = process.env.LOCATION_API_KEY || 'your-location-key';
-  if (apiKey && apiKey === validKey) {
+  const validKey = process.env.LOCATION_API_KEY;
+  if (validKey && apiKey === validKey) {
     req.user = null;
     next();
     return;
