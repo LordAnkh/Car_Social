@@ -194,18 +194,17 @@ router.post('/', authenticateAPIKeyOrToken, async (req, res) => {
     const result = await trips.insertOne(trip);
 
     if (gpsPoints && gpsPoints.length > 0) {
-      const locationDocs = gpsPoints.map(point => ({
-        userId: ownerId,
+      const strippedPoints = gpsPoints.map(point => ({
         latitude: point.latitude,
         longitude: point.longitude,
         altitude: point.altitude || 0,
         speed: point.speed || 0,
-        accuracy: point.accuracy || 0,
         timestamp: new Date(point.timestamp),
-        createdAt: new Date(),
-        tripId: result.insertedId
       }));
-      await db.collection('locations').insertMany(locationDocs);
+      await db.collection('trips').updateOne(
+        { _id: result.insertedId, 'participants.userId': ownerId },
+        { $set: { 'participants.$.gpsPoints': strippedPoints } }
+      );
     }
 
     res.status(201).json({
@@ -232,31 +231,18 @@ router.get('/:id/points', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'Trip not found' });
     }
 
-    // Old format — return single track for backward compatibility
+    // Old format — gpsPoints stored on the trip document itself
     if (!trip.ownerId) {
       return res.json({ tracks: [{ userId: trip.userId, userName: trip.userName, gpsPoints: trip.gpsPoints || [] }] });
     }
 
-    // New format — fetch each participant's track from locations collection
-    const locationDocs = await db.collection('locations')
-      .find({ tripId: trip._id })
-      .sort({ timestamp: 1 })
-      .toArray();
-
-    // Group by userId
-    const trackMap = {};
-    locationDocs.forEach(loc => {
-      if (!trackMap[loc.userId]) trackMap[loc.userId] = [];
-      trackMap[loc.userId].push(loc);
-    });
-
-    const participants = trip.participants || [];
-    const tracks = participants
+    // New format — gpsPoints embedded in each participant entry
+    const tracks = (trip.participants || [])
       .filter(p => p.status === 'accepted')
       .map(p => ({
         userId: p.userId,
         userName: p.userName,
-        gpsPoints: trackMap[p.userId] || [],
+        gpsPoints: p.gpsPoints || [],
       }));
 
     res.json({ tracks });
@@ -286,27 +272,23 @@ router.post('/:id/gps', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'gpsPoints array is required' });
     }
 
-    const locationDocs = gpsPoints.map(point => ({
-      userId: req.user.userId,
+    const strippedPoints = gpsPoints.map(point => ({
       latitude: point.latitude,
       longitude: point.longitude,
       altitude: point.altitude || 0,
       speed: point.speed || 0,
-      accuracy: point.accuracy || 0,
       timestamp: new Date(point.timestamp),
-      createdAt: new Date(),
-      tripId: trip._id,
     }));
 
-    await db.collection('locations').insertMany(locationDocs);
-
-    // Update totalPoints count
     await trips.updateOne(
-      { _id: new ObjectId(req.params.id) },
-      { $inc: { totalPoints: gpsPoints.length } }
+      { _id: new ObjectId(req.params.id), 'participants.userId': req.user.userId },
+      {
+        $push: { 'participants.$.gpsPoints': { $each: strippedPoints } },
+        $inc: { totalPoints: strippedPoints.length },
+      }
     );
 
-    res.json({ message: 'GPS points saved', pointsSaved: gpsPoints.length });
+    res.json({ message: 'GPS points saved', pointsSaved: strippedPoints.length });
   } catch (error) {
     console.error('Save participant GPS error:', error);
     res.status(500).json({ message: 'Server error' });

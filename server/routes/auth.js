@@ -2,8 +2,12 @@ const { Router } = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const { OAuth2Client } = require('google-auth-library');
+const appleSignin = require('apple-signin-auth');
 const { getDb } = require('../db');
 const { generateSasUrl } = require('../azure');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const router = Router();
 
@@ -107,6 +111,111 @@ router.post('/refresh', async (req, res) => {
     res.json({ token: newToken });
   } catch (error) {
     res.status(403).json({ message: 'Invalid or expired token' });
+  }
+});
+
+// Shared — find or create a user from an OAuth login, return a JWT
+async function oauthLogin(res, { oauthProvider, oauthId, email, name }) {
+  const users = getDb().collection('user_credentals');
+
+  let user = await users.findOne({ oauthProvider, oauthId });
+
+  if (!user && email) {
+    user = await users.findOne({ email });
+  }
+
+  if (user) {
+    // Update oauth fields if this is their first OAuth login on an existing account
+    if (!user.oauthId) {
+      await users.updateOne(
+        { _id: user._id },
+        { $set: { oauthProvider, oauthId } }
+      );
+    }
+  } else {
+    // New user
+    const result = await users.insertOne({
+      email: email || null,
+      name: name || null,
+      oauthProvider,
+      oauthId,
+      createdAt: new Date(),
+    });
+    user = { _id: result.insertedId, email, name };
+  }
+
+  const token = jwt.sign(
+    { userId: user._id.toString(), email: user.email },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+
+  let profilePictureUrl = null;
+  if (user.profilePictureKey) {
+    profilePictureUrl = generateSasUrl(user.profilePictureKey);
+  }
+
+  res.json({
+    token,
+    user: {
+      id: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      profilePictureUrl,
+    }
+  });
+}
+
+router.post('/auth/google', loginLimiter, async (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return res.status(503).json({ message: 'Google Sign In is not configured' });
+  }
+
+  try {
+    const { idToken } = req.body;
+    if (!idToken) return res.status(400).json({ message: 'idToken is required' });
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+
+    await oauthLogin(res, {
+      oauthProvider: 'google',
+      oauthId: payload.sub,
+      email: payload.email,
+      name: payload.name,
+    });
+  } catch (error) {
+    console.error('Google OAuth error:', error);
+    res.status(401).json({ message: 'Invalid Google token' });
+  }
+});
+
+router.post('/auth/apple', loginLimiter, async (req, res) => {
+  if (!process.env.APPLE_BUNDLE_ID) {
+    return res.status(503).json({ message: 'Apple Sign In is not configured' });
+  }
+
+  try {
+    const { idToken, name } = req.body;
+    if (!idToken) return res.status(400).json({ message: 'idToken is required' });
+
+    const payload = await appleSignin.verifyIdToken(idToken, {
+      audience: process.env.APPLE_BUNDLE_ID,
+      ignoreExpiration: false,
+    });
+
+    await oauthLogin(res, {
+      oauthProvider: 'apple',
+      oauthId: payload.sub,
+      email: payload.email || null,
+      name: name || null, // Apple only sends name on very first login
+    });
+  } catch (error) {
+    console.error('Apple OAuth error:', error);
+    res.status(401).json({ message: 'Invalid Apple token' });
   }
 });
 
