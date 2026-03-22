@@ -620,4 +620,30 @@ router.put('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+router.post('/:id/report', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+
+    const trip = await db.collection('trips').findOne({ _id: new ObjectId(req.params.id) });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+
+    const { report } = req.body;
+    if (!report || !report.trim()) {
+      return res.status(400).json({ message: 'Report is required' });
+    }
+
+    await db.collection('reports').insertOne({
+      tripId: new ObjectId(req.params.id),
+      reportedBy: req.user.userId,
+      report: report.trim(),
+      createdAt: new Date(),
+    });
+
+    res.status(201).json({ message: 'Report submitted' });
+  } catch (error) {
+    console.error('Report trip error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
