@@ -114,7 +114,7 @@ router.post('/refresh', async (req, res) => {
   }
 });
 
-// Shared — find or create a user from an OAuth login, return a JWT
+// Shared — find existing user from OAuth login, or prompt for username if new
 async function oauthLogin(res, { oauthProvider, oauthId, email, name }) {
   const users = getDb().collection('user_credentals');
 
@@ -125,46 +125,103 @@ async function oauthLogin(res, { oauthProvider, oauthId, email, name }) {
   }
 
   if (user) {
-    // Update oauth fields if this is their first OAuth login on an existing account
+    // Link oauth to existing email/password account if not already linked
     if (!user.oauthId) {
       await users.updateOne(
         { _id: user._id },
         { $set: { oauthProvider, oauthId } }
       );
     }
-  } else {
-    // New user
-    const result = await users.insertOne({
-      email: email || null,
-      name: name || null,
-      oauthProvider,
-      oauthId,
-      createdAt: new Date(),
+
+    const token = jwt.sign(
+      { userId: user._id.toString(), email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    let profilePictureUrl = null;
+    if (user.profilePictureKey) {
+      profilePictureUrl = generateSasUrl(user.profilePictureKey);
+    }
+
+    return res.json({
+      token,
+      user: {
+        id: user._id.toString(),
+        email: user.email,
+        name: user.name,
+        profilePictureUrl,
+      }
     });
-    user = { _id: result.insertedId, email, name };
   }
 
-  const token = jwt.sign(
-    { userId: user._id.toString(), email: user.email },
+  // New user — issue a short-lived setup token, frontend must collect a username
+  const setupToken = jwt.sign(
+    { oauthProvider, oauthId, email: email || null, name: name || null, isOAuthPending: true },
     process.env.JWT_SECRET,
-    { expiresIn: '24h' }
+    { expiresIn: '10m' }
   );
 
-  let profilePictureUrl = null;
-  if (user.profilePictureKey) {
-    profilePictureUrl = generateSasUrl(user.profilePictureKey);
-  }
-
-  res.json({
-    token,
-    user: {
-      id: user._id.toString(),
-      email: user.email,
-      name: user.name,
-      profilePictureUrl,
-    }
-  });
+  res.status(202).json({ needsUsername: true, setupToken });
 }
+
+// POST /api/auth/complete — finish OAuth signup with a chosen username
+router.post('/auth/complete', async (req, res) => {
+  try {
+    const { setupToken, username } = req.body;
+
+    if (!setupToken || !username || !username.trim()) {
+      return res.status(400).json({ message: 'setupToken and username are required' });
+    }
+
+    let pending;
+    try {
+      pending = jwt.verify(setupToken, process.env.JWT_SECRET);
+    } catch {
+      return res.status(403).json({ message: 'Setup token expired or invalid — please sign in again' });
+    }
+
+    if (!pending.isOAuthPending) {
+      return res.status(400).json({ message: 'Invalid setup token' });
+    }
+
+    const users = getDb().collection('user_credentals');
+
+    const existingName = await users.findOne({
+      name: { $regex: new RegExp(`^${username.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+    });
+    if (existingName) {
+      return res.status(400).json({ message: 'Username already taken' });
+    }
+
+    const result = await users.insertOne({
+      email: pending.email || null,
+      name: username.trim(),
+      oauthProvider: pending.oauthProvider,
+      oauthId: pending.oauthId,
+      createdAt: new Date(),
+    });
+
+    const token = jwt.sign(
+      { userId: result.insertedId.toString(), email: pending.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(201).json({
+      token,
+      user: {
+        id: result.insertedId.toString(),
+        email: pending.email,
+        name: username.trim(),
+        profilePictureUrl: null,
+      }
+    });
+  } catch (error) {
+    console.error('Complete OAuth signup error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 router.post('/auth/google', loginLimiter, async (req, res) => {
   if (!process.env.GOOGLE_CLIENT_ID) {
