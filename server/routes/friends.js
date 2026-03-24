@@ -194,6 +194,24 @@ router.get('/requests', authenticateToken, async (req, res) => {
   }
 });
 
+router.delete('/request/:id', authenticateToken, async (req, res) => {
+  try {
+    const friendRequests = getDb().collection('friend_requests');
+
+    const request = await friendRequests.findOne({ _id: new ObjectId(req.params.id) });
+    if (!request) return res.status(404).json({ message: 'Request not found' });
+    if (request.senderId !== req.user.userId) return res.status(403).json({ message: 'Not authorized' });
+    if (request.status !== 'pending') return res.status(400).json({ message: 'Request already handled' });
+
+    await friendRequests.deleteOne({ _id: new ObjectId(req.params.id) });
+
+    res.json({ message: 'Friend request cancelled' });
+  } catch (error) {
+    console.error('Cancel friend request error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.put('/request/:id/accept', authenticateToken, async (req, res) => {
   try {
     const friendRequests = getDb().collection('friend_requests');
