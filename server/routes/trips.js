@@ -646,4 +646,239 @@ router.post('/:id/report', authenticateToken, async (req, res) => {
   }
 });
 
+// POST /:id/like — like a trip
+router.post('/:id/like', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+    const trips = db.collection('trips');
+
+    const trip = await trips.findOne({ _id: new ObjectId(req.params.id) });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+
+    const alreadyLiked = (trip.likedBy || []).includes(req.user.userId);
+    if (alreadyLiked) {
+      return res.status(409).json({ message: 'Already liked' });
+    }
+
+    await trips.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      {
+        $push: { likedBy: req.user.userId },
+        $inc: { likeCount: 1 },
+      }
+    );
+
+    res.json({ message: 'Liked', likeCount: (trip.likeCount || 0) + 1 });
+  } catch (error) {
+    console.error('Like trip error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// DELETE /:id/like — unlike a trip
+router.delete('/:id/like', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+    const trips = db.collection('trips');
+
+    const trip = await trips.findOne({ _id: new ObjectId(req.params.id) });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+
+    const liked = (trip.likedBy || []).includes(req.user.userId);
+    if (!liked) {
+      return res.status(409).json({ message: 'Not liked' });
+    }
+
+    await trips.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      {
+        $pull: { likedBy: req.user.userId },
+        $inc: { likeCount: -1 },
+      }
+    );
+
+    res.json({ message: 'Unliked', likeCount: Math.max((trip.likeCount || 1) - 1, 0) });
+  } catch (error) {
+    console.error('Unlike trip error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// GET /:id/comments — get all comments for a trip
+router.get('/:id/comments', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+
+    const trip = await db.collection('trips').findOne({ _id: new ObjectId(req.params.id) });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+
+    const comments = await db.collection('comments')
+      .find({ tripId: new ObjectId(req.params.id) })
+      .sort({ createdAt: 1 })
+      .toArray();
+
+    res.json({ comments });
+  } catch (error) {
+    console.error('Get comments error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /:id/comments — add a comment
+router.post('/:id/comments', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+
+    const trip = await db.collection('trips').findOne({ _id: new ObjectId(req.params.id) });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+
+    const { text } = req.body;
+    if (!text || !text.trim()) {
+      return res.status(400).json({ message: 'Comment text is required' });
+    }
+
+    const user = await db.collection('user_credentals').findOne(
+      { _id: new ObjectId(req.user.userId) },
+      { projection: { name: 1, profilePictureKey: 1 } }
+    );
+
+    const comment = {
+      tripId: new ObjectId(req.params.id),
+      userId: req.user.userId,
+      userName: user?.name || null,
+      text: text.trim(),
+      createdAt: new Date(),
+    };
+
+    const result = await db.collection('comments').insertOne(comment);
+
+    await db.collection('trips').updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $inc: { commentCount: 1 } }
+    );
+
+    res.status(201).json({ comment: { ...comment, _id: result.insertedId } });
+  } catch (error) {
+    console.error('Post comment error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// DELETE /:id/comments/:commentId — delete a comment (owner of comment or trip owner)
+router.delete('/:id/comments/:commentId', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+
+    const comment = await db.collection('comments').findOne({ _id: new ObjectId(req.params.commentId) });
+    if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+    const trip = await db.collection('trips').findOne({ _id: new ObjectId(req.params.id) });
+    if (!trip) return res.status(404).json({ message: 'Trip not found' });
+
+    const isCommentOwner = comment.userId === req.user.userId;
+    const isTripOwner = getOwnerId(trip) === req.user.userId;
+
+    if (!isCommentOwner && !isTripOwner) {
+      return res.status(403).json({ message: 'Not authorized to delete this comment' });
+    }
+
+    await db.collection('comments').deleteOne({ _id: new ObjectId(req.params.commentId) });
+
+    await db.collection('trips').updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $inc: { commentCount: -1 } }
+    );
+
+    res.json({ message: 'Comment deleted' });
+  } catch (error) {
+    console.error('Delete comment error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /:id/comments/:commentId/like — like a comment
+router.post('/:id/comments/:commentId/like', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+    const comments = db.collection('comments');
+
+    const comment = await comments.findOne({ _id: new ObjectId(req.params.commentId) });
+    if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+    if ((comment.likedBy || []).includes(req.user.userId)) {
+      return res.status(409).json({ message: 'Already liked' });
+    }
+
+    await comments.updateOne(
+      { _id: new ObjectId(req.params.commentId) },
+      {
+        $push: { likedBy: req.user.userId },
+        $inc: { likeCount: 1 },
+      }
+    );
+
+    res.json({ message: 'Liked', likeCount: (comment.likeCount || 0) + 1 });
+  } catch (error) {
+    console.error('Like comment error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// DELETE /:id/comments/:commentId/like — unlike a comment
+router.delete('/:id/comments/:commentId/like', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+    const comments = db.collection('comments');
+
+    const comment = await comments.findOne({ _id: new ObjectId(req.params.commentId) });
+    if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+    if (!(comment.likedBy || []).includes(req.user.userId)) {
+      return res.status(409).json({ message: 'Not liked' });
+    }
+
+    await comments.updateOne(
+      { _id: new ObjectId(req.params.commentId) },
+      {
+        $pull: { likedBy: req.user.userId },
+        $inc: { likeCount: -1 },
+      }
+    );
+
+    res.json({ message: 'Unliked', likeCount: Math.max((comment.likeCount || 1) - 1, 0) });
+  } catch (error) {
+    console.error('Unlike comment error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// POST /:id/comments/:commentId/report — report a comment
+router.post('/:id/comments/:commentId/report', authenticateToken, async (req, res) => {
+  try {
+    const db = getDb();
+
+    const comment = await db.collection('comments').findOne({ _id: new ObjectId(req.params.commentId) });
+    if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+    const { reason } = req.body;
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ message: 'Reason is required' });
+    }
+
+    await db.collection('reports').insertOne({
+      type: 'comment',
+      commentId: new ObjectId(req.params.commentId),
+      tripId: new ObjectId(req.params.id),
+      reportedBy: req.user.userId,
+      reason: reason.trim(),
+      createdAt: new Date(),
+    });
+
+    res.status(201).json({ message: 'Comment reported' });
+  } catch (error) {
+    console.error('Report comment error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
