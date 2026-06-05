@@ -57,14 +57,14 @@ In the tracker app, set:
 **Save single location:**
 ```
 POST /api/location
-Headers: X-API-Key: car-tracker-2024
+Headers: X-API-Key: YOUR_LOCATION_API_KEY
 Body: { latitude, longitude, altitude, speed, accuracy, timestamp, userId }
 ```
 
 **Save batch locations (offline buffer):**
 ```
 POST /api/locations/batch
-Headers: X-API-Key: car-tracker-2024
+Headers: X-API-Key: YOUR_LOCATION_API_KEY
 Body: { locations: [...], userId }
 ```
 
